@@ -1,0 +1,162 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Mini-Game Arcade</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1.5rem;
+      box-sizing: border-box;
+
+      /* Dark atmospheric background with soft gradient */
+      background: 
+        radial-gradient(circle at top right, rgba(56, 189, 248, 0.12), transparent 40%),
+        radial-gradient(circle at bottom left, rgba(234, 179, 8, 0.08), transparent 40%),
+        #0f172a;
+      color: #f8fafc;
+    }
+
+    .hub-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 2.5rem 2rem;
+      border-radius: 20px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+      width: 100%;
+      max-width: 580px;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0 0 0.5rem 0;
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .sub-title {
+      color: #94a3b8;
+      font-size: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .game-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .game-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: #0f172a;
+      border: 2px solid #334155;
+      padding: 16px 20px;
+      border-radius: 12px;
+      text-decoration: none;
+      color: inherit;
+      text-align: left;
+      transition: all 0.2s ease;
+    }
+
+    .game-card:hover {
+      border-color: #38bdf8;
+      background: #182234;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(56, 189, 248, 0.15);
+    }
+
+    .game-icon {
+      font-size: 2rem;
+      background: #1e293b;
+      width: 54px;
+      height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      flex-shrink: 0;
+      border: 1px solid #334155;
+    }
+
+    .game-details {
+      flex: 1;
+    }
+
+    .game-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-bottom: 3px;
+    }
+
+    .game-desc {
+      font-size: 0.88rem;
+      color: #94a3b8;
+      line-height: 1.35;
+    }
+
+    .arrow-icon {
+      color: #64748b;
+      font-weight: bold;
+      font-size: 1.2rem;
+      transition: transform 0.2s, color 0.2s;
+    }
+
+    .game-card:hover .arrow-icon {
+      color: #38bdf8;
+      transform: translateX(4px);
+    }
+
+    footer {
+      margin-top: 2rem;
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+
+<div class="hub-card">
+  <h1>🕹️ Web Game Arcade</h1>
+  <div class="sub-title">Pick a puzzle or trivia challenge to play</div>
+
+  <div class="game-grid">
+    
+    <!-- Idioms Game -->
+    <a href="idioms/" class="game-card">
+      <div class="game-icon">🌍</div>
+      <div class="game-details">
+        <div class="game-title">Lost in Translation</div>
+        <div class="game-desc">100 literal foreign idioms—guess what they actually mean.</div>
+      </div>
+      <div class="arrow-icon">➔</div>
+    </a>
+
+    <!-- Chronology Game -->
+    <a href="chronology/" class="game-card">
+      <div class="game-icon">📜</div>
+      <div class="game-details">
+        <div class="game-title">Chronology Challenge</div>
+        <div class="game-desc">Drag 5 historical events into the correct chronological order.</div>
+      </div>
+      <div class="arrow-icon">➔</div>
+    </a>
+
+  </div>
+
+  <footer>Hosted on GitHub Pages</footer>
+</div>
+
+</body>
+</html>
