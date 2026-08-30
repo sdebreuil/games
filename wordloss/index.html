@@ -112,8 +112,14 @@
   <div class="found-list" id="found-words"></div>
 </div>
 
-<!-- 1. Load the Dictionary Data -->
-<script src="dictionary.js"></script>
+<!-- Load the shared master dictionary -->
+<script src="../shared/dictionary.js"></script>
+
+<!-- Load that specific game's local logic -->
+<script>
+  // VALID_WORDS is now available here!
+  console.log("Dictionary loaded:", VALID_WORDS.size, "words available.");
+</script>
 
 <!-- 2. Main Game Script -->
 <script>
