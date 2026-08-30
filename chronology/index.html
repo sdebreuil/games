@@ -1,0 +1,380 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chronology - Historical Timeline Game</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1.5rem;
+      box-sizing: border-box;
+      background: radial-gradient(circle at top, #1e293b, #0f172a);
+      color: #f8fafc;
+      user-select: none;
+    }
+
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 2rem;
+      border-radius: 16px;
+      max-width: 600px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+    }
+
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+
+    .back-link {
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .back-link:hover { color: #38bdf8; }
+
+    .stats-badge {
+      background: #334155;
+      color: #38bdf8;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+
+    h1 {
+      margin: 0 0 0.25rem 0;
+      font-size: 1.8rem;
+    }
+
+    .sub {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+      line-height: 1.4;
+    }
+
+    /* Current Event to Place */
+    .current-card-box {
+      background: #0f172a;
+      border: 2px solid #38bdf8;
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 12px rgba(56, 189, 248, 0.15);
+    }
+
+    .current-card-label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #38bdf8;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+    }
+
+    .current-event-text {
+      font-size: 1.15rem;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+
+    /* Timeline Area */
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 1.5rem;
+    }
+
+    /* Insertion Slots */
+    .slot-btn {
+      background: transparent;
+      border: 2px dashed #475569;
+      color: #94a3b8;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .slot-btn:hover {
+      border-color: #38bdf8;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.05);
+      transform: scale(1.02);
+    }
+
+    /* Timeline Event Badges */
+    .timeline-event {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #334155;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border-left: 4px solid #38bdf8;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-align: left;
+    }
+
+    .timeline-year {
+      font-family: monospace;
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #38bdf8;
+      margin-left: 12px;
+      white-space: nowrap;
+    }
+
+    .status {
+      font-size: 0.95rem;
+      font-weight: 600;
+      min-height: 1.4rem;
+      margin-top: 1rem;
+    }
+
+    /* Game Over Modal / Result */
+    .game-over-box {
+      margin-top: 1.5rem;
+      padding: 1.25rem;
+      background: #0f172a;
+      border: 1px dashed #475569;
+      border-radius: 8px;
+    }
+
+    button.primary-btn {
+      background: #38bdf8;
+      color: #0f172a;
+      border: none;
+      padding: 10px 20px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    button.primary-btn:hover { background: #0ea5e9; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="header-bar">
+    <a href="../" class="back-link">← Back to Arcade</a>
+    <div class="stats-badge">Score: <span id="score-val">0</span> | Lives: <span id="lives-val">❤️❤️❤️</span></div>
+  </div>
+
+  <h1>Chronology</h1>
+  <div class="sub">Decide where the event fits into the timeline below!</div>
+
+  <!-- Event to place -->
+  <div class="current-card-box" id="current-card">
+    <div class="current-card-label">Place this event</div>
+    <div class="current-event-text" id="event-description">Loading event...</div>
+  </div>
+
+  <!-- Dynamic Timeline -->
+  <div class="timeline" id="timeline-container"></div>
+
+  <div class="status" id="status-msg"></div>
+  <div id="game-over-container" style="display:none;"></div>
+</div>
+
+<script>
+  const HISTORICAL_EVENTS = [
+    { year: -2560, text: "Construction of the Great Pyramid of Giza is completed" },
+    { year: -776,  text: "First recorded Olympic Games held in Olympia, Greece" },
+    { year: -44,   text: "Julius Caesar is assassinated in Rome" },
+    { year: 79,    text: "Mount Vesuvius erupts, destroying Pompeii" },
+    { year: 1066,  text: "Battle of Hastings; Norman conquest of England" },
+    { year: 1215,  text: "King John of England signs the Magna Carta" },
+    { year: 1347,  text: "The Black Death plague arrives in Europe" },
+    { year: 1440,  text: "Johannes Gutenberg invents the movable type printing press" },
+    { year: 1492,  text: "Christopher Columbus arrives in the Americas" },
+    { year: 1605,  text: "Gunpowder Plot in London fails" },
+    { year: 1687,  text: "Isaac Newton publishes the Principia Mathematica" },
+    { year: 1776,  text: "United States Declaration of Independence is signed" },
+    { year: 1789,  text: "Storming of the Bastille sparks the French Revolution" },
+    { year: 1815,  text: "Napoleon Bonaparte is defeated at the Battle of Waterloo" },
+    { year: 1865,  text: "The American Civil War ends" },
+    { year: 1876,  text: "Alexander Graham Bell patents the telephone" },
+    { year: 1903,  text: "The Wright Brothers achieve first powered airplane flight" },
+    { year: 1912,  text: "The RMS Titanic sinks in the North Atlantic" },
+    { year: 1928,  text: "Alexander Fleming discovers penicillin" },
+    { year: 1945,  text: "World War II officially concludes" },
+    { year: 1969,  text: "Apollo 11 mission lands astronauts on the Moon" },
+    { year: 1989,  text: "Fall of the Berlin Wall" },
+    { year: 1991,  text: "World Wide Web opens to the public" },
+    { year: 2001,  text: "Wikipedia is officially launched" }
+  ];
+
+  let deck = [];
+  let timeline = [];
+  let currentEvent = null;
+  let score = 0;
+  let lives = 3;
+  let isGameOver = false;
+
+  const eventDescEl = document.getElementById("event-description");
+  const timelineContainerEl = document.getElementById("timeline-container");
+  const statusEl = document.getElementById("status-msg");
+  const scoreValEl = document.getElementById("score-val");
+  const livesValEl = document.getElementById("lives-val");
+  const gameOverEl = document.getElementById("game-over-container");
+  const currentCardBox = document.getElementById("current-card");
+
+  function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+  }
+
+  function formatYear(year) {
+    if (year < 0) return `${Math.abs(year)} BCE`;
+    return `${year} CE`;
+  }
+
+  function initGame() {
+    isGameOver = false;
+    score = 0;
+    lives = 3;
+    deck = [...HISTORICAL_EVENTS];
+    shuffle(deck);
+
+    // Starter anchor card
+    timeline = [deck.pop()];
+    gameOverEl.style.display = "none";
+    currentCardBox.style.display = "block";
+    statusEl.innerText = "";
+    
+    drawNextEvent();
+    render();
+  }
+
+  function drawNextEvent() {
+    if (deck.length === 0) {
+      endGame(true);
+      return;
+    }
+    currentEvent = deck.pop();
+    eventDescEl.innerText = currentEvent.text;
+  }
+
+  function render() {
+    scoreValEl.innerText = score;
+    livesValEl.innerText = "❤️".repeat(lives);
+    timelineContainerEl.innerHTML = "";
+
+    // Render insertion buttons between timeline cards
+    for (let i = 0; i <= timeline.length; i++) {
+      const btn = document.createElement("button");
+      btn.className = "slot-btn";
+      
+      if (i === 0) {
+        btn.innerText = `↓ Place Before ${formatYear(timeline[0].year)} ↓`;
+      } else if (i === timeline.length) {
+        btn.innerText = `↑ Place After ${formatYear(timeline[timeline.length - 1].year)} ↑`;
+      } else {
+        btn.innerText = `↕ Place Between ${formatYear(timeline[i-1].year)} and ${formatYear(timeline[i].year)} ↕`;
+      }
+
+      btn.onclick = () => handlePlacement(i);
+      timelineContainerEl.appendChild(btn);
+
+      // Render timeline card
+      if (i < timeline.length) {
+        const item = document.createElement("div");
+        item.className = "timeline-event";
+        item.innerHTML = `
+          <div>${timeline[i].text}</div>
+          <div class="timeline-year">${formatYear(timeline[i].year)}</div>
+        `;
+        timelineContainerEl.appendChild(item);
+      }
+    }
+  }
+
+  function handlePlacement(insertIdx) {
+    if (isGameOver) return;
+
+    // Check if inserted in valid sorted chronological position
+    const prevYear = insertIdx === 0 ? -Infinity : timeline[insertIdx - 1].year;
+    const nextYear = insertIdx === timeline.length ? Infinity : timeline[insertIdx].year;
+
+    if (currentEvent.year >= prevYear && currentEvent.year <= nextYear) {
+      // Correct
+      score++;
+      statusEl.innerText = ` Correct! (${formatYear(currentEvent.year)})`;
+      statusEl.style.color = "#10b981";
+
+      timeline.splice(insertIdx, 0, currentEvent);
+      drawNextEvent();
+    } else {
+      // Incorrect
+      lives--;
+      statusEl.innerText = ` Incorrect! That occurred in ${formatYear(currentEvent.year)}.`;
+      statusEl.style.color = "#f43f5e";
+
+      if (lives <= 0) {
+        endGame(false);
+        return;
+      }
+      drawNextEvent();
+    }
+
+    render();
+  }
+
+  function endGame(victory) {
+    isGameOver = true;
+    currentCardBox.style.display = "none";
+    timelineContainerEl.innerHTML = "";
+
+    let message = victory 
+      ? ` Perfect! You placed every event in history correctly!` 
+      : `Game Over! Final Score: ${score} event${score === 1 ? '' : 's'} placed.`;
+
+    statusEl.innerText = message;
+    statusEl.style.color = victory ? "#10b981" : "#f59e0b";
+
+    let finalTimelineHTML = timeline.map(e => `
+      <div class="timeline-event" style="margin-bottom:6px;">
+        <div>${e.text}</div>
+        <div class="timeline-year">${formatYear(e.year)}</div>
+      </div>
+    `).join("");
+
+    gameOverEl.innerHTML = `
+      <div class="game-over-box">
+        <h3>Final Timeline</h3>
+        ${finalTimelineHTML}
+        <button class="primary-btn" onclick="initGame()">Play Again</button>
+      </div>
+    `;
+    gameOverEl.style.display = "block";
+  }
+
+  initGame();
+</script>
+
+</body>
+</html>
