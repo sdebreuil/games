@@ -47,15 +47,20 @@
     }
     .back-link:hover { color: #38bdf8; }
 
-    .mode-badge {
+    .newgame-badge {
       background: #334155;
       color: #38bdf8;
+      border: 1px solid #475569;
       font-size: 0.8rem;
       font-weight: 700;
-      padding: 4px 10px;
+      padding: 5px 12px;
       border-radius: 20px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .newgame-badge:hover {
+      background: #475569;
+      border-color: #38bdf8;
     }
 
     h1 {
@@ -70,7 +75,7 @@
       line-height: 1.4;
     }
 
-    /* Score & Remaining Tracker */
+    /* Live Game Stats */
     .stats-bar {
       display: flex;
       justify-content: space-between;
@@ -153,7 +158,7 @@
       box-sizing: border-box;
     }
 
-    /* Shake on Error */
+    /* Error Shake */
     .shake {
       animation: shakeTray 0.35s ease-in-out;
       border-color: #f43f5e !important;
@@ -229,7 +234,7 @@
       min-height: 1.4rem;
     }
 
-    /* History & Word Badges */
+    /* History & Badges */
     .history-container {
       margin-top: 1.5rem;
       display: flex;
@@ -257,7 +262,7 @@
       animation: flipIn 0.3s ease-out;
     }
 
-    /* Game Over Modal / Box */
+    /* Game Over Container */
     .solution-box {
       margin-top: 1.5rem;
       padding: 1.25rem;
@@ -282,6 +287,17 @@
       font-size: 0.9rem;
       margin: 10px 0;
     }
+
+    @media (max-width: 480px) {
+      .tile, .tile-placeholder {
+        width: 38px;
+        height: 44px;
+        font-size: 1.2rem;
+      }
+      .card {
+        padding: 1.25rem 0.75rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -289,9 +305,7 @@
 <div class="card">
   <div class="header-bar">
     <a href="../" class="back-link">← Back to Arcade</a>
-    <div id="game-mode-toggle" class="mode-badge" onclick="toggleGameMode()" style="cursor:pointer;" title="Click to switch Daily / Free Play">
-      Mode: Daily
-    </div>
+    <button class="newgame-badge" onclick="initGame()">🔄 New Word</button>
   </div>
 
   <h1>At A Loss For Words</h1>
@@ -321,7 +335,7 @@
   <div id="game-over-container" style="display:none;"></div>
 </div>
 
-<!-- Load Shared Dictionary -->
+<!-- Load Shared Local Master Dictionary -->
 <script src="../shared/dictionary.js"></script>
 
 <script>
@@ -331,9 +345,7 @@
   let userWords = [];
   let totalScore = 0;
   let isGameOver = false;
-  let isDailyMode = true;
 
-  // Length Multipliers: 7 letters = 70 pts ... 3 letters = 30 pts
   const SCORE_VALUES = { 7: 70, 6: 50, 5: 35, 4: 20, 3: 10 };
 
   let ANAGRAM_MAP = new Map();
@@ -347,34 +359,11 @@
   const gameOverEl = document.getElementById("game-over-container");
   const scoreDisplayEl = document.getElementById("score-display");
   const tierCounterEl = document.getElementById("tier-counter");
-  const modeBadgeEl = document.getElementById("game-mode-toggle");
   const submitBtn = document.getElementById("submit-btn");
   const clearBtn = document.getElementById("clear-btn");
   const shuffleBtn = document.getElementById("shuffle-btn");
   const doneBtn = document.getElementById("done-btn");
   const giveupBtn = document.getElementById("giveup-btn");
-
-  // Pseudo-random number generator using Mulberry32 for deterministic Daily puzzles
-  function mulberry32(seed) {
-    return function() {
-      var t = seed += 0x6D2B79F5;
-      t = Math.imul(t ^ (t >>> 15), t | 1);
-      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    }
-  }
-
-  function getDailySeed() {
-    const d = new Date();
-    // Deterministic integer based on YYYYMMDD
-    return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
-  }
-
-  function toggleGameMode() {
-    isDailyMode = !isDailyMode;
-    modeBadgeEl.innerText = isDailyMode ? "Mode: Daily" : "Mode: Free Play";
-    initGame();
-  }
 
   function getSortedKey(word) {
     return word.toUpperCase().split("").sort().join("");
@@ -413,40 +402,40 @@
     return Array.from(subKeys);
   }
 
-  function solveChainFast(key, targetLen = 3, rng = Math.random) {
+  function solveChainFast(key, targetLen = 3) {
     if (key.length === targetLen) {
       const validWords = ANAGRAM_MAP.get(key);
       if (validWords && validWords.length > 0) {
-        return [validWords[Math.floor(rng() * validWords.length)]];
+        return [validWords[Math.floor(Math.random() * validWords.length)]];
       }
       return null;
     }
 
     const subKeys = getSubKeys(key).filter(k => ANAGRAM_MAP.has(k));
-    shuffleArray(subKeys, rng);
+    shuffleArray(subKeys);
 
     for (let nextKey of subKeys) {
-      const subChain = solveChainFast(nextKey, targetLen, rng);
+      const subChain = solveChainFast(nextKey, targetLen);
       if (subChain) {
         const words = ANAGRAM_MAP.get(key);
-        const chosen = words[Math.floor(rng() * words.length)];
+        const chosen = words[Math.floor(Math.random() * words.length)];
         return [chosen, ...subChain];
       }
     }
     return null;
   }
 
-  function generatePyramid(rng = Math.random) {
+  function generateRandomPyramid() {
     if (!IS_INDEXED) {
       const success = buildAnagramIndex();
       if (!success) return null;
     }
 
     const keysCopy = [...SEVEN_KEYS];
-    shuffleArray(keysCopy, rng);
+    shuffleArray(keysCopy);
 
     for (let i = 0; i < Math.min(keysCopy.length, 50); i++) {
-      const chain = solveChainFast(keysCopy[i], 3, rng);
+      const chain = solveChainFast(keysCopy[i], 3);
       if (chain) return chain;
     }
     return null;
@@ -474,8 +463,7 @@
       return;
     }
 
-    const rng = isDailyMode ? mulberry32(getDailySeed()) : Math.random;
-    currentChain = generatePyramid(rng);
+    currentChain = generateRandomPyramid();
 
     if (!currentChain) {
       setMsg("Generating puzzle...", "#94a3b8");
@@ -490,15 +478,15 @@
       used: false
     }));
 
-    shuffleArray(rackTiles, rng);
+    shuffleArray(rackTiles);
     renderAll();
     updateTierCounter();
     setMsg("Tap letters or type to make 7-letter words! Drop down when ready.", "#38bdf8");
   }
 
-  function shuffleArray(array, rng = Math.random) {
+  function shuffleArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
+      const j = Math.floor(Math.random() * (i + 1));
       [array[i], array[j]] = [array[j], array[i]];
     }
   }
@@ -594,11 +582,10 @@
   function triggerError(msg) {
     setMsg(msg, "#f43f5e");
     guessTrayEl.classList.remove("shake");
-    void guessTrayEl.offsetWidth; // Force CSS reflow
+    void guessTrayEl.offsetWidth;
     guessTrayEl.classList.add("shake");
   }
 
-  // Counts total valid anagrams possible from the active rack at current length
   function getPossibleWordsAtCurrentRack() {
     const key = getSortedKey(rackTiles.map(t => t.letter).join(""));
     return ANAGRAM_MAP.get(key) || [];
@@ -657,7 +644,6 @@
       return;
     }
 
-    // Success: Award points and log
     const pts = SCORE_VALUES[guess.length] || 10;
     totalScore += pts;
     scoreDisplayEl.innerText = totalScore;
@@ -723,14 +709,14 @@
         <h4>Target Solution Chain</h4>
         ${currentChain.map(w => `<div class="solution-row">${w}</div>`).join("")}
         <div class="score-breakdown">Total Score: <strong>${totalScore} pts</strong> across <strong>${userWords.length}</strong> words.</div>
-        <button style="margin-top:8px;" onclick="initGame()">${isDailyMode ? 'Replay Daily' : 'New Game'}</button>
+        <button style="margin-top:8px;" onclick="initGame()">Play Another Word</button>
       </div>
     `;
     gameOverEl.innerHTML = solutionHTML;
     gameOverEl.style.display = "block";
   }
 
-  // Keyboard controls
+  // Keyboard support
   window.addEventListener("keydown", (e) => {
     if (isGameOver) return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
