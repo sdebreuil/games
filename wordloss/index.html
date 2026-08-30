@@ -1,9 +1,11 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Word Loss - Anagram Pyramid</title>
+  <title>At A Loss For Words</title>
   <style>
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -16,6 +18,7 @@
       box-sizing: border-box;
       background: radial-gradient(circle at top, #1e293b, #0f172a);
       color: #f8fafc;
+      user-select: none;
     }
 
     .card {
@@ -23,109 +26,191 @@
       border: 1px solid #334155;
       padding: 2rem;
       border-radius: 16px;
-      max-width: 520px;
+      max-width: 560px;
       width: 100%;
       text-align: center;
       box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
     }
 
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+
     .back-link {
-      display: inline-block;
       color: #94a3b8;
       text-decoration: none;
       font-size: 0.9rem;
       font-weight: 600;
-      margin-bottom: 1.5rem;
-      text-align: left;
-      width: 100%;
     }
     .back-link:hover { color: #38bdf8; }
 
+    .mode-badge {
+      background: #334155;
+      color: #38bdf8;
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
     h1 {
-      margin: 0 0 0.5rem 0;
+      margin: 0 0 0.25rem 0;
       font-size: 1.8rem;
     }
 
     .sub {
       color: #94a3b8;
-      font-size: 0.9rem;
-      margin-bottom: 1.5rem;
+      font-size: 0.88rem;
+      margin-bottom: 1.25rem;
+      line-height: 1.4;
     }
 
-    /* Active Rack of Letter Tiles */
+    /* Score & Remaining Tracker */
+    .stats-bar {
+      display: flex;
+      justify-content: space-between;
+      background: rgba(15, 23, 42, 0.7);
+      padding: 8px 16px;
+      border-radius: 8px;
+      margin-bottom: 1.25rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+      border: 1px solid #334155;
+    }
+    .stat-val { color: #38bdf8; }
+
+    /* Guess Tray */
+    .guess-container {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 52px;
+      padding: 6px;
+      margin-bottom: 1rem;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 10px;
+      border: 1px dashed #475569;
+      align-items: center;
+      transition: border-color 0.2s;
+    }
+
+    /* Active Rack */
     .rack-container {
       display: flex;
       justify-content: center;
       flex-wrap: wrap;
       gap: 8px;
-      margin: 1.5rem 0;
-      min-height: 48px;
+      margin-bottom: 1.5rem;
+      min-height: 52px;
+      align-items: center;
     }
 
+    /* Tile Animations & Styling */
     .tile {
       background: #0f172a;
       border: 2px solid #38bdf8;
       color: #f8fafc;
-      width: 40px;
-      height: 44px;
+      width: 44px;
+      height: 48px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.3rem;
+      font-size: 1.4rem;
       font-weight: 800;
       border-radius: 8px;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-      text-transform: uppercase;
+      cursor: pointer;
+      transition: transform 0.1s, background-color 0.15s, border-color 0.15s;
     }
 
-    .tile.spent {
-      border-color: #475569;
-      color: #475569;
-      background: transparent;
+    .tile:hover {
+      transform: translateY(-2px);
+      border-color: #7dd3fc;
+    }
+    .tile:active { transform: translateY(1px); }
+
+    .tile.bounce {
+      animation: pop 0.15s ease-out;
     }
 
-    /* Input & Controls */
-    input[type="text"] {
-      width: 80%;
-      padding: 12px 16px;
-      font-size: 1.3rem;
-      text-transform: uppercase;
-      text-align: center;
-      letter-spacing: 0.2em;
-      font-weight: bold;
-      background: #0f172a;
-      border: 2px solid #475569;
-      color: #f8fafc;
+    .tile.in-guess {
+      background: #38bdf8;
+      color: #0f172a;
+      border-color: #7dd3fc;
+    }
+
+    .tile-placeholder {
+      width: 44px;
+      height: 48px;
+      border: 2px dashed #334155;
       border-radius: 8px;
-      outline: none;
-      margin-bottom: 1rem;
-      transition: border-color 0.2s;
+      box-sizing: border-box;
     }
 
-    input[type="text"]:focus {
-      border-color: #38bdf8;
+    /* Shake on Error */
+    .shake {
+      animation: shakeTray 0.35s ease-in-out;
+      border-color: #f43f5e !important;
     }
 
+    @keyframes shakeTray {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px); }
+      40%, 80% { transform: translateX(8px); }
+    }
+
+    @keyframes pop {
+      0% { transform: scale(0.85); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes flipIn {
+      0% { transform: rotateX(90deg); opacity: 0; }
+      100% { transform: rotateX(0deg); opacity: 1; }
+    }
+
+    /* Controls */
     .btn-group {
       display: flex;
       justify-content: center;
-      gap: 10px;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 0.5rem;
     }
 
     button {
       background: #38bdf8;
       color: #0f172a;
       border: none;
-      padding: 10px 20px;
+      padding: 10px 16px;
       font-size: 0.95rem;
       font-weight: 700;
       border-radius: 8px;
       cursor: pointer;
       transition: background 0.2s, opacity 0.2s;
     }
-
     button:hover { background: #0ea5e9; }
     button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .secondary-btn {
+      background: #334155;
+      color: #f8fafc;
+      border: 1px solid #475569;
+    }
+    .secondary-btn:hover { background: #475569; }
+
+    .done-btn {
+      background: #10b981;
+      color: #0f172a;
+    }
+    .done-btn:hover { background: #059669; }
 
     .giveup-btn {
       background: transparent;
@@ -137,37 +222,45 @@
       color: #f8fafc;
     }
 
-    /* Feedback & History */
     .status {
-      margin-top: 1rem;
+      margin-top: 1.25rem;
       font-size: 0.95rem;
       font-weight: 600;
       min-height: 1.4rem;
     }
 
-    .history {
+    /* History & Word Badges */
+    .history-container {
       margin-top: 1.5rem;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 8px;
       align-items: center;
     }
 
-    .pyramid-row {
+    .history-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+    }
+
+    .pyramid-word {
       background: #334155;
       color: #38bdf8;
       font-family: monospace;
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: 800;
-      padding: 4px 16px;
+      padding: 4px 12px;
       border-radius: 6px;
-      letter-spacing: 0.25em;
+      letter-spacing: 0.2em;
+      animation: flipIn 0.3s ease-out;
     }
 
-    /* Solution Reveal */
+    /* Game Over Modal / Box */
     .solution-box {
       margin-top: 1.5rem;
-      padding: 1rem;
+      padding: 1.25rem;
       background: #0f172a;
       border: 1px dashed #475569;
       border-radius: 8px;
@@ -182,99 +275,315 @@
       color: #94a3b8;
       font-weight: bold;
       letter-spacing: 0.2em;
+      margin: 2px 0;
+    }
+    .score-breakdown {
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      margin: 10px 0;
     }
   </style>
 </head>
 <body>
 
 <div class="card">
-  <a href="../" class="back-link">← Back to Arcade</a>
-  
-  <h1>Word Loss</h1>
-  <div class="sub" id="level-desc">Solve the anagram, then make shorter words from the remainder!</div>
+  <div class="header-bar">
+    <a href="../" class="back-link">← Back to Arcade</a>
+    <div id="game-mode-toggle" class="mode-badge" onclick="toggleGameMode()" style="cursor:pointer;" title="Click to switch Daily / Free Play">
+      Mode: Daily
+    </div>
+  </div>
 
-  <!-- Live Letter Bank -->
+  <h1>At A Loss For Words</h1>
+  <div class="sub">
+    Find words at each tier. Entering a shorter word drops you down and removes unused letters!
+  </div>
+
+  <!-- Real-time Stats -->
+  <div class="stats-bar">
+    <div>Score: <span id="score-display" class="stat-val">0</span></div>
+    <div>Words at Rack Size: <span id="tier-counter" class="stat-val">0/0</span></div>
+  </div>
+
+  <div class="guess-container" id="guess-tray"></div>
   <div class="rack-container" id="tile-rack"></div>
 
-  <!-- Word Submission Form -->
-  <form id="game-form" onsubmit="handleGuess(event)">
-    <input type="text" id="word-input" autocomplete="off" autofocus placeholder="ENTER GUESS" />
-    <div class="btn-group">
-      <button type="submit" id="submit-btn">Submit Word</button>
-      <button type="button" class="giveup-btn" onclick="endGame(false)">Give Up</button>
-    </div>
-  </form>
+  <div class="btn-group">
+    <button type="button" id="submit-btn" onclick="submitWord()">Submit</button>
+    <button type="button" class="secondary-btn" id="clear-btn" onclick="clearGuess()">Clear</button>
+    <button type="button" class="secondary-btn" id="shuffle-btn" onclick="shuffleRack()">🔀 Shuffle</button>
+    <button type="button" class="done-btn" id="done-btn" style="display:none;" onclick="endGame(true, 'cleared_early')">Done</button>
+    <button type="button" class="giveup-btn" id="giveup-btn" onclick="endGame(false, 'surrendered')">Give Up</button>
+  </div>
 
   <div class="status" id="status-msg"></div>
-
-  <!-- Player Ladder -->
-  <div class="history" id="player-history"></div>
-
-  <!-- Game Over Container -->
+  <div class="history-container" id="player-history"></div>
   <div id="game-over-container" style="display:none;"></div>
 </div>
 
-<!-- Load Master Local Dictionary -->
+<!-- Load Shared Dictionary -->
 <script src="../shared/dictionary.js"></script>
 
 <script>
-  // Curated 10-to-3 Pyramids
-  const PYRAMIDS = [
-    {
-      chain: ["MEDITATORS", "STREAMLIT", "STREAMLET", "STARTLE", "LATEST", "STEAL", "LATE", "TEA"],
-      pool: "MEDITATORS".split("").sort(() => 0.5 - Math.random())
-    },
-    {
-      chain: ["DECIMATORS", "DECIMATOR", "REACTIONS", "NOTICES", "COILED", "CLONE", "ONCE", "ONE"],
-      pool: "DECIMATORS".split("").sort(() => 0.5 - Math.random())
-    },
-    {
-      chain: ["REPLICATED", "PREDICTAL", "PREDIATE", "PERMUTE", "REPENT", "ENTER", "TREE", "SEE"],
-      pool: "REPLICATED".split("").sort(() => 0.5 - Math.random())
-    },
-    {
-      chain: ["CHARIOTERS", "CHARIOTER", "ROSETTIC", "HOTTIER", "TIEROD", "TIRED", "RIDE", "RED"],
-      pool: "CHARIOTERS".split("").sort(() => 0.5 - Math.random())
-    }
-  ];
-
-  let currentPuzzle = null;
-  let activeLetterBank = [];
+  let currentChain = [];
+  let rackTiles = [];
+  let currentGuess = [];
   let userWords = [];
+  let totalScore = 0;
   let isGameOver = false;
+  let isDailyMode = true;
 
+  // Length Multipliers: 7 letters = 70 pts ... 3 letters = 30 pts
+  const SCORE_VALUES = { 7: 70, 6: 50, 5: 35, 4: 20, 3: 10 };
+
+  let ANAGRAM_MAP = new Map();
+  let SEVEN_KEYS = [];
+  let IS_INDEXED = false;
+
+  const guessTrayEl = document.getElementById("guess-tray");
   const rackEl = document.getElementById("tile-rack");
-  const inputEl = document.getElementById("word-input");
   const statusEl = document.getElementById("status-msg");
   const historyEl = document.getElementById("player-history");
   const gameOverEl = document.getElementById("game-over-container");
+  const scoreDisplayEl = document.getElementById("score-display");
+  const tierCounterEl = document.getElementById("tier-counter");
+  const modeBadgeEl = document.getElementById("game-mode-toggle");
   const submitBtn = document.getElementById("submit-btn");
+  const clearBtn = document.getElementById("clear-btn");
+  const shuffleBtn = document.getElementById("shuffle-btn");
+  const doneBtn = document.getElementById("done-btn");
+  const giveupBtn = document.getElementById("giveup-btn");
+
+  // Pseudo-random number generator using Mulberry32 for deterministic Daily puzzles
+  function mulberry32(seed) {
+    return function() {
+      var t = seed += 0x6D2B79F5;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    }
+  }
+
+  function getDailySeed() {
+    const d = new Date();
+    // Deterministic integer based on YYYYMMDD
+    return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  }
+
+  function toggleGameMode() {
+    isDailyMode = !isDailyMode;
+    modeBadgeEl.innerText = isDailyMode ? "Mode: Daily" : "Mode: Free Play";
+    initGame();
+  }
+
+  function getSortedKey(word) {
+    return word.toUpperCase().split("").sort().join("");
+  }
+
+  function buildAnagramIndex() {
+    if (typeof VALID_WORDS === "undefined" || VALID_WORDS.size === 0) return false;
+    ANAGRAM_MAP.clear();
+    SEVEN_KEYS = [];
+
+    for (let w of VALID_WORDS) {
+      const len = w.length;
+      if (len >= 3 && len <= 7) {
+        const key = getSortedKey(w);
+        const upper = w.toUpperCase();
+        if (!ANAGRAM_MAP.has(key)) {
+          ANAGRAM_MAP.set(key, [upper]);
+        } else {
+          ANAGRAM_MAP.get(key).push(upper);
+        }
+      }
+    }
+
+    for (let key of ANAGRAM_MAP.keys()) {
+      if (key.length === 7) SEVEN_KEYS.push(key);
+    }
+    IS_INDEXED = true;
+    return true;
+  }
+
+  function getSubKeys(key) {
+    const subKeys = new Set();
+    for (let i = 0; i < key.length; i++) {
+      subKeys.add(key.slice(0, i) + key.slice(i + 1));
+    }
+    return Array.from(subKeys);
+  }
+
+  function solveChainFast(key, targetLen = 3, rng = Math.random) {
+    if (key.length === targetLen) {
+      const validWords = ANAGRAM_MAP.get(key);
+      if (validWords && validWords.length > 0) {
+        return [validWords[Math.floor(rng() * validWords.length)]];
+      }
+      return null;
+    }
+
+    const subKeys = getSubKeys(key).filter(k => ANAGRAM_MAP.has(k));
+    shuffleArray(subKeys, rng);
+
+    for (let nextKey of subKeys) {
+      const subChain = solveChainFast(nextKey, targetLen, rng);
+      if (subChain) {
+        const words = ANAGRAM_MAP.get(key);
+        const chosen = words[Math.floor(rng() * words.length)];
+        return [chosen, ...subChain];
+      }
+    }
+    return null;
+  }
+
+  function generatePyramid(rng = Math.random) {
+    if (!IS_INDEXED) {
+      const success = buildAnagramIndex();
+      if (!success) return null;
+    }
+
+    const keysCopy = [...SEVEN_KEYS];
+    shuffleArray(keysCopy, rng);
+
+    for (let i = 0; i < Math.min(keysCopy.length, 50); i++) {
+      const chain = solveChainFast(keysCopy[i], 3, rng);
+      if (chain) return chain;
+    }
+    return null;
+  }
 
   function initGame() {
     isGameOver = false;
     userWords = [];
+    currentGuess = [];
+    totalScore = 0;
+    scoreDisplayEl.innerText = "0";
     historyEl.innerHTML = "";
     gameOverEl.style.display = "none";
     gameOverEl.innerHTML = "";
-    inputEl.disabled = false;
     submitBtn.disabled = false;
+    clearBtn.disabled = false;
+    shuffleBtn.disabled = false;
+    doneBtn.style.display = "none";
+    doneBtn.disabled = false;
+    giveupBtn.disabled = false;
 
-    // Pick a random pyramid chain
-    currentPuzzle = PYRAMIDS[Math.floor(Math.random() * PYRAMIDS.length)];
-    activeLetterBank = [...currentPuzzle.pool];
+    if (typeof VALID_WORDS === "undefined" || VALID_WORDS.size === 0) {
+      setMsg("Loading shared dictionary...", "#94a3b8");
+      setTimeout(initGame, 100);
+      return;
+    }
 
-    renderTiles();
-    setMsg("Unscramble all 10 letters to begin!", "#38bdf8");
+    const rng = isDailyMode ? mulberry32(getDailySeed()) : Math.random;
+    currentChain = generatePyramid(rng);
+
+    if (!currentChain) {
+      setMsg("Generating puzzle...", "#94a3b8");
+      setTimeout(initGame, 100);
+      return;
+    }
+
+    const rootWord = currentChain[0];
+    rackTiles = rootWord.split("").map((letter, idx) => ({
+      id: idx,
+      letter: letter,
+      used: false
+    }));
+
+    shuffleArray(rackTiles, rng);
+    renderAll();
+    updateTierCounter();
+    setMsg("Tap letters or type to make 7-letter words! Drop down when ready.", "#38bdf8");
   }
 
-  function renderTiles() {
-    rackEl.innerHTML = "";
-    activeLetterBank.forEach(letter => {
-      const tile = document.createElement("div");
-      tile.className = "tile";
-      tile.innerText = letter;
-      rackEl.appendChild(tile);
+  function shuffleArray(array, rng = Math.random) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+  }
+
+  function shuffleRack() {
+    if (isGameOver) return;
+    const available = rackTiles.filter(t => !t.used);
+    shuffleArray(available);
+
+    let availIdx = 0;
+    rackTiles = rackTiles.map(t => {
+      if (!t.used) return available[availIdx++];
+      return t;
     });
+    renderAll();
+  }
+
+  function renderAll() {
+    renderGuessTray();
+    renderRack();
+  }
+
+  function renderGuessTray() {
+    guessTrayEl.innerHTML = "";
+    if (currentGuess.length === 0) {
+      const hint = document.createElement("span");
+      hint.style.color = "#64748b";
+      hint.style.fontSize = "0.95rem";
+      hint.innerText = "Type or tap tiles";
+      guessTrayEl.appendChild(hint);
+      return;
+    }
+
+    currentGuess.forEach(tile => {
+      const el = document.createElement("div");
+      el.className = "tile in-guess bounce";
+      el.innerText = tile.letter;
+      el.onclick = () => returnTileToRack(tile);
+      guessTrayEl.appendChild(el);
+    });
+  }
+
+  function renderRack() {
+    rackEl.innerHTML = "";
+    rackTiles.forEach(tile => {
+      if (tile.used) {
+        const placeholder = document.createElement("div");
+        placeholder.className = "tile-placeholder";
+        rackEl.appendChild(placeholder);
+      } else {
+        const el = document.createElement("div");
+        el.className = "tile";
+        el.innerText = tile.letter;
+        el.onclick = () => addTileToGuess(tile);
+        rackEl.appendChild(el);
+      }
+    });
+  }
+
+  function addTileToGuess(tile) {
+    if (isGameOver || tile.used) return;
+    tile.used = true;
+    currentGuess.push(tile);
+    renderAll();
+  }
+
+  function returnTileToRack(tile) {
+    if (isGameOver) return;
+    tile.used = false;
+    currentGuess = currentGuess.filter(t => t.id !== tile.id);
+    renderAll();
+  }
+
+  function popLastTile() {
+    if (currentGuess.length === 0) return;
+    const lastTile = currentGuess.pop();
+    lastTile.used = false;
+    renderAll();
+  }
+
+  function clearGuess() {
+    if (isGameOver || currentGuess.length === 0) return;
+    currentGuess.forEach(t => t.used = false);
+    currentGuess = [];
+    renderAll();
   }
 
   function setMsg(txt, color) {
@@ -282,97 +591,168 @@
     statusEl.style.color = color;
   }
 
-  function canFormWord(guess, bank) {
-    const tempBank = [...bank];
-    for (let char of guess) {
-      const idx = tempBank.indexOf(char);
-      if (idx === -1) return false;
-      tempBank.splice(idx, 1);
-    }
-    return true;
+  function triggerError(msg) {
+    setMsg(msg, "#f43f5e");
+    guessTrayEl.classList.remove("shake");
+    void guessTrayEl.offsetWidth; // Force CSS reflow
+    guessTrayEl.classList.add("shake");
   }
 
-  function handleGuess(e) {
-    e.preventDefault();
+  // Counts total valid anagrams possible from the active rack at current length
+  function getPossibleWordsAtCurrentRack() {
+    const key = getSortedKey(rackTiles.map(t => t.letter).join(""));
+    return ANAGRAM_MAP.get(key) || [];
+  }
+
+  function updateTierCounter() {
+    const allAtTier = getPossibleWordsAtCurrentRack();
+    const foundAtTier = userWords.filter(w => w.length === rackTiles.length);
+    tierCounterEl.innerText = `${foundAtTier.length}/${allAtTier.length}`;
+  }
+
+  function renderHistory() {
+    historyEl.innerHTML = "";
+    const groups = {};
+    userWords.forEach(w => {
+      const len = w.length;
+      if (!groups[len]) groups[len] = [];
+      groups[len].push(w);
+    });
+
+    const lengths = Object.keys(groups).map(Number).sort((a, b) => b - a);
+    lengths.forEach(len => {
+      const row = document.createElement("div");
+      row.className = "history-row";
+      groups[len].forEach(word => {
+        const badge = document.createElement("span");
+        badge.className = "pyramid-word";
+        badge.innerText = `${word} (+${SCORE_VALUES[len] || 10})`;
+        row.appendChild(badge);
+      });
+      historyEl.appendChild(row);
+    });
+  }
+
+  function submitWord() {
     if (isGameOver) return;
+    const guess = currentGuess.map(t => t.letter).join("");
 
-    const guess = inputEl.value.trim().toUpperCase();
-    inputEl.value = "";
-
-    // 1. Length validation
-    if (userWords.length === 0) {
-      if (guess.length !== 10) {
-        setMsg("First word must use all 10 letters!", "#f59e0b");
-        return;
-      }
-    } else {
-      const maxAllowed = activeLetterBank.length - 1;
-      if (guess.length > maxAllowed) {
-        setMsg(`Word must be ${maxAllowed} letters or fewer!`, "#f59e0b");
-        return;
-      }
-      if (guess.length < 3) {
-        setMsg("Words must be at least 3 letters long!", "#f59e0b");
-        return;
-      }
-    }
-
-    // 2. Anagram bank validation
-    if (!canFormWord(guess, activeLetterBank)) {
-      setMsg("Cannot make that word from remaining letters!", "#f43f5e");
+    if (guess.length < 3) {
+      triggerError("Words must be at least 3 letters long!");
       return;
     }
 
-    // 3. Dictionary validation
+    if (guess.length > rackTiles.length) {
+      triggerError(`Word cannot exceed current rack size (${rackTiles.length})!`);
+      return;
+    }
+
+    if (userWords.includes(guess)) {
+      triggerError(`You already entered "${guess}"!`);
+      return;
+    }
+
     if (typeof VALID_WORDS !== "undefined" && !VALID_WORDS.has(guess.toLowerCase())) {
-      setMsg(`"${guess}" is not in the dictionary!`, "#f43f5e");
+      triggerError(`"${guess}" is not in the dictionary!`);
       return;
     }
 
-    // Success: Accept Word
+    // Success: Award points and log
+    const pts = SCORE_VALUES[guess.length] || 10;
+    totalScore += pts;
+    scoreDisplayEl.innerText = totalScore;
     userWords.push(guess);
-    const row = document.createElement("div");
-    row.className = "pyramid-row";
-    row.innerText = guess;
-    historyEl.appendChild(row);
+    renderHistory();
 
-    // Shrink active bank to only letters used in this guess
-    activeLetterBank = guess.split("");
-    renderTiles();
-
-    // Check if player hit the 3-letter minimum target
-    if (guess.length === 3) {
-      endGame(true);
+    const droppedSize = guess.length < rackTiles.length;
+    if (droppedSize) {
+      rackTiles = currentGuess.map((t, idx) => ({
+        id: idx,
+        letter: t.letter,
+        used: false
+      }));
+      shuffleArray(rackTiles);
     } else {
-      setMsg(`Accepted! Next word: ${activeLetterBank.length - 1} letters or fewer.`, "#10b981");
+      rackTiles.forEach(t => t.used = false);
+    }
+
+    currentGuess = [];
+    renderAll();
+    updateTierCounter();
+
+    if (rackTiles.length === 3) {
+      doneBtn.style.display = "inline-block";
+      const remainingThree = getPossibleWordsAtCurrentRack().filter(w => !userWords.includes(w));
+
+      if (remainingThree.length === 0) {
+        endGame(true, "all_found");
+        return;
+      } else {
+        setMsg(`+${pts} pts! Found ${remainingThree.length} more possible 3-letter word(s). Click Done anytime.`, "#10b981");
+      }
+    } else {
+      if (droppedSize) {
+        setMsg(`+${pts} pts! Dropped to ${rackTiles.length} letters. Unused tiles removed.`, "#10b981");
+      } else {
+        setMsg(`+${pts} pts! Accepted "${guess}".`, "#10b981");
+      }
     }
   }
 
-  function endGame(cleared) {
+  function endGame(cleared, reason) {
     isGameOver = true;
-    inputEl.disabled = true;
     submitBtn.disabled = true;
+    clearBtn.disabled = true;
+    shuffleBtn.disabled = true;
+    doneBtn.disabled = true;
+    giveupBtn.disabled = true;
 
-    let score = userWords.length;
-    let message = cleared 
-      ? `🎉 Pyramid complete! Final Score: ${score} words.` 
-      : `Game Over! Final Score: ${score} words.`;
+    let message = "";
+    if (reason === "all_found") {
+      message = `🎉 Cleared all 3-letter words! Final Score: ${totalScore} pts (${userWords.length} words).`;
+    } else if (reason === "cleared_early") {
+      message = `🏁 Pyramid Finished! Final Score: ${totalScore} pts (${userWords.length} words).`;
+    } else {
+      message = `Game Over! Final Score: ${totalScore} pts (${userWords.length} words).`;
+    }
 
     setMsg(message, cleared ? "#10b981" : "#f59e0b");
 
-    // Display canonical solution
     let solutionHTML = `
       <div class="solution-box">
-        <h4>Target Solution Pyramid</h4>
-        ${currentPuzzle.chain.map(w => `<div class="solution-row">${w}</div>`).join("")}
-        <button style="margin-top:12px;" onclick="initGame()">Play Again</button>
+        <h4>Target Solution Chain</h4>
+        ${currentChain.map(w => `<div class="solution-row">${w}</div>`).join("")}
+        <div class="score-breakdown">Total Score: <strong>${totalScore} pts</strong> across <strong>${userWords.length}</strong> words.</div>
+        <button style="margin-top:8px;" onclick="initGame()">${isDailyMode ? 'Replay Daily' : 'New Game'}</button>
       </div>
     `;
     gameOverEl.innerHTML = solutionHTML;
     gameOverEl.style.display = "block";
   }
 
-  // Start on load
+  // Keyboard controls
+  window.addEventListener("keydown", (e) => {
+    if (isGameOver) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    if (e.key === "Enter") {
+      e.preventDefault();
+      submitWord();
+    } else if (e.key === "Backspace" || e.key === "Delete") {
+      e.preventDefault();
+      popLastTile();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      clearGuess();
+    } else if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
+      const char = e.key.toUpperCase();
+      const matchingTile = rackTiles.find(t => !t.used && t.letter === char);
+      if (matchingTile) {
+        addTileToGuess(matchingTile);
+      }
+    }
+  });
+
   initGame();
 </script>
 
