@@ -1,34 +1,34 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Word Validation Game</title>
+  <title>Word Loss - Anagram Pyramid</title>
   <style>
     body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #0f172a;
-      color: #f8fafc;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
-      margin: 0;
       padding: 1.5rem;
       box-sizing: border-box;
+      background: radial-gradient(circle at top, #1e293b, #0f172a);
+      color: #f8fafc;
     }
+
     .card {
       background: #1e293b;
       border: 1px solid #334155;
       padding: 2rem;
       border-radius: 16px;
-      max-width: 480px;
+      max-width: 520px;
       width: 100%;
       text-align: center;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
     }
+
     .back-link {
       display: inline-block;
       color: #94a3b8;
@@ -40,13 +40,58 @@
       width: 100%;
     }
     .back-link:hover { color: #38bdf8; }
+
+    h1 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.8rem;
+    }
+
+    .sub {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+
+    /* Active Rack of Letter Tiles */
+    .rack-container {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 1.5rem 0;
+      min-height: 48px;
+    }
+
+    .tile {
+      background: #0f172a;
+      border: 2px solid #38bdf8;
+      color: #f8fafc;
+      width: 40px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      font-weight: 800;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      text-transform: uppercase;
+    }
+
+    .tile.spent {
+      border-color: #475569;
+      color: #475569;
+      background: transparent;
+    }
+
+    /* Input & Controls */
     input[type="text"] {
       width: 80%;
       padding: 12px 16px;
-      font-size: 1.2rem;
+      font-size: 1.3rem;
       text-transform: uppercase;
       text-align: center;
-      letter-spacing: 0.15em;
+      letter-spacing: 0.2em;
       font-weight: bold;
       background: #0f172a;
       border: 2px solid #475569;
@@ -54,42 +99,89 @@
       border-radius: 8px;
       outline: none;
       margin-bottom: 1rem;
+      transition: border-color 0.2s;
     }
+
     input[type="text"]:focus {
       border-color: #38bdf8;
     }
-    .submit-btn {
+
+    .btn-group {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    button {
       background: #38bdf8;
       color: #0f172a;
       border: none;
-      padding: 12px 24px;
-      font-size: 1rem;
+      padding: 10px 20px;
+      font-size: 0.95rem;
       font-weight: 700;
       border-radius: 8px;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: background 0.2s, opacity 0.2s;
     }
-    .submit-btn:hover { background: #0ea5e9; }
+
+    button:hover { background: #0ea5e9; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .giveup-btn {
+      background: transparent;
+      border: 1px solid #475569;
+      color: #94a3b8;
+    }
+    .giveup-btn:hover {
+      background: #334155;
+      color: #f8fafc;
+    }
+
+    /* Feedback & History */
     .status {
-      margin-top: 1.5rem;
-      font-size: 1.1rem;
+      margin-top: 1rem;
+      font-size: 0.95rem;
       font-weight: 600;
-      min-height: 1.5rem;
+      min-height: 1.4rem;
     }
-    .found-list {
+
+    .history {
       margin-top: 1.5rem;
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: center;
+      flex-direction: column;
+      gap: 6px;
+      align-items: center;
     }
-    .word-badge {
+
+    .pyramid-row {
       background: #334155;
       color: #38bdf8;
-      padding: 4px 10px;
+      font-family: monospace;
+      font-size: 1.1rem;
+      font-weight: 800;
+      padding: 4px 16px;
       border-radius: 6px;
-      font-weight: 700;
-      font-size: 0.85rem;
+      letter-spacing: 0.25em;
+    }
+
+    /* Solution Reveal */
+    .solution-box {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: #0f172a;
+      border: 1px dashed #475569;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .solution-box h4 {
+      margin: 0 0 8px 0;
+      color: #38bdf8;
+    }
+    .solution-row {
+      font-family: monospace;
+      color: #94a3b8;
+      font-weight: bold;
+      letter-spacing: 0.2em;
     }
   </style>
 </head>
@@ -98,65 +190,190 @@
 <div class="card">
   <a href="../" class="back-link">← Back to Arcade</a>
   
-  <h2>🔤 Word Guess Challenge</h2>
-  <p style="color:#94a3b8; font-size: 0.95rem;">Enter a valid English word:</p>
+  <h1>Word Loss</h1>
+  <div class="sub" id="level-desc">Solve the anagram, then make shorter words from the remainder!</div>
 
-  <form id="word-form" onsubmit="checkWord(event)">
-    <input type="text" id="word-input" autocomplete="off" autofocus placeholder="TYPE HERE" />
-    <br>
-    <button type="submit" class="submit-btn">Submit Guess</button>
+  <!-- Live Letter Bank -->
+  <div class="rack-container" id="tile-rack"></div>
+
+  <!-- Word Submission Form -->
+  <form id="game-form" onsubmit="handleGuess(event)">
+    <input type="text" id="word-input" autocomplete="off" autofocus placeholder="ENTER GUESS" />
+    <div class="btn-group">
+      <button type="submit" id="submit-btn">Submit Word</button>
+      <button type="button" class="giveup-btn" onclick="endGame(false)">Give Up</button>
+    </div>
   </form>
 
   <div class="status" id="status-msg"></div>
 
-  <div class="found-list" id="found-words"></div>
+  <!-- Player Ladder -->
+  <div class="history" id="player-history"></div>
+
+  <!-- Game Over Container -->
+  <div id="game-over-container" style="display:none;"></div>
 </div>
 
-<!-- Load the shared master dictionary -->
+<!-- Load Master Local Dictionary -->
 <script src="../shared/dictionary.js"></script>
 
-<!-- Load that specific game's local logic -->
 <script>
-  // VALID_WORDS is now available here!
-  console.log("Dictionary loaded:", VALID_WORDS.size, "words available.");
-</script>
+  // Curated 10-to-3 Pyramids
+  const PYRAMIDS = [
+    {
+      chain: ["MEDITATORS", "STREAMLIT", "STREAMLET", "STARTLE", "LATEST", "STEAL", "LATE", "TEA"],
+      pool: "MEDITATORS".split("").sort(() => 0.5 - Math.random())
+    },
+    {
+      chain: ["DECIMATORS", "DECIMATOR", "REACTIONS", "NOTICES", "COILED", "CLONE", "ONCE", "ONE"],
+      pool: "DECIMATORS".split("").sort(() => 0.5 - Math.random())
+    },
+    {
+      chain: ["REPLICATED", "PREDICTAL", "PREDIATE", "PERMUTE", "REPENT", "ENTER", "TREE", "SEE"],
+      pool: "REPLICATED".split("").sort(() => 0.5 - Math.random())
+    },
+    {
+      chain: ["CHARIOTERS", "CHARIOTER", "ROSETTIC", "HOTTIER", "TIEROD", "TIRED", "RIDE", "RED"],
+      pool: "CHARIOTERS".split("").sort(() => 0.5 - Math.random())
+    }
+  ];
 
-<!-- 2. Main Game Script -->
-<script>
-  const foundWords = new Set();
+  let currentPuzzle = null;
+  let activeLetterBank = [];
+  let userWords = [];
+  let isGameOver = false;
 
-  function checkWord(event) {
-    event.preventDefault();
-    const input = document.getElementById("word-input");
-    const status = document.getElementById("status-msg");
-    const guess = input.value.trim().toLowerCase();
+  const rackEl = document.getElementById("tile-rack");
+  const inputEl = document.getElementById("word-input");
+  const statusEl = document.getElementById("status-msg");
+  const historyEl = document.getElementById("player-history");
+  const gameOverEl = document.getElementById("game-over-container");
+  const submitBtn = document.getElementById("submit-btn");
 
-    if (!guess) return;
+  function initGame() {
+    isGameOver = false;
+    userWords = [];
+    historyEl.innerHTML = "";
+    gameOverEl.style.display = "none";
+    gameOverEl.innerHTML = "";
+    inputEl.disabled = false;
+    submitBtn.disabled = false;
 
-    if (foundWords.has(guess)) {
-      status.innerText = `⚠️ You already found "${guess.toUpperCase()}"!`;
-      status.style.color = "#f59e0b";
-    } else if (VALID_WORDS.has(guess)) {
-      foundWords.add(guess);
-      status.innerText = `🎉 "${guess.toUpperCase()}" is a valid word!`;
-      status.style.color = "#10b981";
-      renderFoundWord(guess);
+    // Pick a random pyramid chain
+    currentPuzzle = PYRAMIDS[Math.floor(Math.random() * PYRAMIDS.length)];
+    activeLetterBank = [...currentPuzzle.pool];
+
+    renderTiles();
+    setMsg("Unscramble all 10 letters to begin!", "#38bdf8");
+  }
+
+  function renderTiles() {
+    rackEl.innerHTML = "";
+    activeLetterBank.forEach(letter => {
+      const tile = document.createElement("div");
+      tile.className = "tile";
+      tile.innerText = letter;
+      rackEl.appendChild(tile);
+    });
+  }
+
+  function setMsg(txt, color) {
+    statusEl.innerText = txt;
+    statusEl.style.color = color;
+  }
+
+  function canFormWord(guess, bank) {
+    const tempBank = [...bank];
+    for (let char of guess) {
+      const idx = tempBank.indexOf(char);
+      if (idx === -1) return false;
+      tempBank.splice(idx, 1);
+    }
+    return true;
+  }
+
+  function handleGuess(e) {
+    e.preventDefault();
+    if (isGameOver) return;
+
+    const guess = inputEl.value.trim().toUpperCase();
+    inputEl.value = "";
+
+    // 1. Length validation
+    if (userWords.length === 0) {
+      if (guess.length !== 10) {
+        setMsg("First word must use all 10 letters!", "#f59e0b");
+        return;
+      }
     } else {
-      status.innerText = `❌ "${guess.toUpperCase()}" is not in the dictionary.`;
-      status.style.color = "#f43f5e";
+      const maxAllowed = activeLetterBank.length - 1;
+      if (guess.length > maxAllowed) {
+        setMsg(`Word must be ${maxAllowed} letters or fewer!`, "#f59e0b");
+        return;
+      }
+      if (guess.length < 3) {
+        setMsg("Words must be at least 3 letters long!", "#f59e0b");
+        return;
+      }
     }
 
-    input.value = "";
-    input.focus();
+    // 2. Anagram bank validation
+    if (!canFormWord(guess, activeLetterBank)) {
+      setMsg("Cannot make that word from remaining letters!", "#f43f5e");
+      return;
+    }
+
+    // 3. Dictionary validation
+    if (typeof VALID_WORDS !== "undefined" && !VALID_WORDS.has(guess.toLowerCase())) {
+      setMsg(`"${guess}" is not in the dictionary!`, "#f43f5e");
+      return;
+    }
+
+    // Success: Accept Word
+    userWords.push(guess);
+    const row = document.createElement("div");
+    row.className = "pyramid-row";
+    row.innerText = guess;
+    historyEl.appendChild(row);
+
+    // Shrink active bank to only letters used in this guess
+    activeLetterBank = guess.split("");
+    renderTiles();
+
+    // Check if player hit the 3-letter minimum target
+    if (guess.length === 3) {
+      endGame(true);
+    } else {
+      setMsg(`Accepted! Next word: ${activeLetterBank.length - 1} letters or fewer.`, "#10b981");
+    }
   }
 
-  function renderFoundWord(word) {
-    const list = document.getElementById("found-words");
-    const badge = document.createElement("span");
-    badge.className = "word-badge";
-    badge.innerText = word.toUpperCase();
-    list.prepend(badge);
+  function endGame(cleared) {
+    isGameOver = true;
+    inputEl.disabled = true;
+    submitBtn.disabled = true;
+
+    let score = userWords.length;
+    let message = cleared 
+      ? `🎉 Pyramid complete! Final Score: ${score} words.` 
+      : `Game Over! Final Score: ${score} words.`;
+
+    setMsg(message, cleared ? "#10b981" : "#f59e0b");
+
+    // Display canonical solution
+    let solutionHTML = `
+      <div class="solution-box">
+        <h4>Target Solution Pyramid</h4>
+        ${currentPuzzle.chain.map(w => `<div class="solution-row">${w}</div>`).join("")}
+        <button style="margin-top:12px;" onclick="initGame()">Play Again</button>
+      </div>
+    `;
+    gameOverEl.innerHTML = solutionHTML;
+    gameOverEl.style.display = "block";
   }
+
+  // Start on load
+  initGame();
 </script>
 
 </body>
