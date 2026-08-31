@@ -1,0 +1,410 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Colour Trail</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: #f1f5f9;
+      color: #0f172a;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      overflow: hidden;
+    }
+
+    .header-bar {
+      display: flex;
+      width: 100%;
+      max-width: 600px;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .back-link {
+      color: #64748b;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .back-link:hover { color: #0284c7; }
+
+    .title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    /* 100x100 Grid Container */
+    .canvas-wrapper {
+      position: relative;
+      background: #ffffff;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      border: 1px solid #cbd5e1;
+    }
+
+    canvas {
+      display: block;
+      width: min(85vw, 550px);
+      height: min(85vw, 550px);
+      image-rendering: pixelated; /* Keeps fine grid lines crisp */
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    /* Control Panel */
+    .controls-card {
+      margin-top: 1rem;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1rem;
+      max-width: 600px;
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    select, button, input[type="range"] {
+      font-family: inherit;
+      font-size: 0.85rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 6px 10px;
+      background: #ffffff;
+      color: #0f172a;
+      outline: none;
+      cursor: pointer;
+    }
+
+    button {
+      font-weight: 700;
+      background: #f8fafc;
+      transition: all 0.15s;
+    }
+    button:hover {
+      background: #e2e8f0;
+      border-color: #94a3b8;
+    }
+
+    .btn-reset {
+      background: #fee2e2;
+      border-color: #fca5a5;
+      color: #991b1b;
+    }
+    .btn-reset:hover {
+      background: #fecaca;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-bar">
+    <a href="../" class="back-link">← Arcade</a>
+    <span class="title">Colour Trail</span>
+    <span style="font-size:0.8rem; color:#64748b;">100×100 Grid</span>
+  </div>
+
+  <div class="canvas-wrapper">
+    <canvas id="trailCanvas" width="100" height="100"></canvas>
+  </div>
+
+  <div class="controls-card">
+    <div class="control-group">
+      <label for="speedSlider">Speed:</label>
+      <input type="range" id="speedSlider" min="5" max="60" value="25">
+    </div>
+
+    <div class="control-group">
+      <label for="inputSelect">Control:</label>
+      <select id="inputSelect">
+        <option value="arrows">Arrows / WASD</option>
+        <option value="pointer">Mouse / Touch Direct</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label for="startColorSelect">Head:</label>
+      <select id="startColorSelect">
+        <option value="0,0,255">Blue</option>
+        <option value="255,0,0">Red</option>
+        <option value="0,200,0">Green</option>
+        <option value="255,165,0">Orange</option>
+        <option value="160,32,240">Purple</option>
+      </select>
+    </div>
+
+    <div class="control-group" style="gap: 6px;">
+      <button onclick="clearCanvas()">Clear Trails</button>
+      <button class="btn-reset" onclick="resetGame()">Reset</button>
+    </div>
+  </div>
+
+<script>
+  const canvas = document.getElementById("trailCanvas");
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+  const GRID_SIZE = 100;
+  const FADE_TIME_MS = 3000; // 3 seconds fade out
+
+  // State
+  let headX = 50;
+  let headY = 50;
+  let vx = 1;
+  let vy = 0;
+  let speed = 25; // updates per sec
+  let currentRGB = [0, 0, 255]; // starts Blue
+
+  let lastTime = 0;
+  let accumulator = 0;
+
+  // Track each tile's visual state: [r, g, b, alpha (0-1), timestamp]
+  // 1D array mapped from (y * 100 + x)
+  const gridCells = new Array(GRID_SIZE * GRID_SIZE).fill(null);
+
+  // Colour Pick-Up Orbs / Blocks
+  const BLOCKS = [
+    { x: 20, y: 20, w: 8, h: 8, rgb: [255, 0, 0], label: "Red" },       // Red
+    { x: 75, y: 20, w: 8, h: 8, rgb: [0, 200, 0], label: "Green" },    // Green
+    { x: 20, y: 75, w: 8, h: 8, rgb: [255, 180, 0], label: "Orange" }, // Orange
+    { x: 75, y: 75, w: 8, h: 8, rgb: [0, 180, 255], label: "Cyan" }     // Cyan
+  ];
+
+  // Control Listeners
+  const speedSlider = document.getElementById("speedSlider");
+  const inputSelect = document.getElementById("inputSelect");
+  const startColorSelect = document.getElementById("startColorSelect");
+
+  speedSlider.addEventListener("input", (e) => { speed = parseInt(e.target.value); });
+  startColorSelect.addEventListener("change", (e) => {
+    currentRGB = e.target.value.split(",").map(Number);
+  });
+
+  // Keyboard navigation
+  window.addEventListener("keydown", (e) => {
+    if (inputSelect.value !== "arrows") return;
+
+    switch (e.key) {
+      case "ArrowUp":
+      case "w":
+      case "W":
+        vx = 0; vy = -1; break;
+      case "ArrowDown":
+      case "s":
+      case "S":
+        vx = 0; vy = 1; break;
+      case "ArrowLeft":
+      case "a":
+      case "A":
+        vx = -1; vy = 0; break;
+      case "ArrowRight":
+      case "d":
+      case "D":
+        vx = 1; vy = 0; break;
+    }
+  });
+
+  // Mouse & Touch direct steering
+  function handlePointer(event) {
+    if (inputSelect.value !== "pointer") return;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+    const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+
+    const targetX = Math.floor(((clientX - rect.left) / rect.width) * GRID_SIZE);
+    const targetY = Math.floor(((clientY - rect.top) / rect.height) * GRID_SIZE);
+
+    const dx = targetX - headX;
+    const dy = targetY - headY;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      vx = dx > 0 ? 1 : -1;
+      vy = 0;
+    } else if (dy !== 0) {
+      vx = 0;
+      vy = dy > 0 ? 1 : -1;
+    }
+  }
+
+  canvas.addEventListener("mousemove", (e) => { if (e.buttons === 1) handlePointer(e); });
+  canvas.addEventListener("mousedown", handlePointer);
+  canvas.addEventListener("touchmove", handlePointer, { passive: false });
+  canvas.addEventListener("touchstart", handlePointer, { passive: false });
+
+  function bounceHead() {
+    // Generate a new random angle heading inward
+    const angles = [
+      { x: 1, y: 0 }, { x: -1, y: 0 },
+      { x: 0, y: 1 }, { x: 0, y: -1 }
+    ];
+    // Filter out directions that immediately push outside
+    const valid = angles.filter(a => {
+      const nx = headX + a.x;
+      const ny = headY + a.y;
+      return nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE;
+    });
+
+    if (valid.length > 0) {
+      const choice = valid[Math.floor(Math.random() * valid.length)];
+      vx = choice.x;
+      vy = choice.y;
+    }
+  }
+
+  function stepSimulation() {
+    let nextX = headX + vx;
+    let nextY = headY + vy;
+
+    // Wall collision & random bounce
+    if (nextX < 0 || nextX >= GRID_SIZE || nextY < 0 || nextY >= GRID_SIZE) {
+      bounceHead();
+      nextX = Math.max(0, Math.min(GRID_SIZE - 1, headX + vx));
+      nextY = Math.max(0, Math.min(GRID_SIZE - 1, headY + vy));
+    }
+
+    headX = nextX;
+    headY = nextY;
+
+    // Check hit on primary colour blocks
+    for (let b of BLOCKS) {
+      if (headX >= b.x && headX < b.x + b.w && headY >= b.y && headY < b.y + b.h) {
+        currentRGB = [...b.rgb];
+      }
+    }
+
+    // Process Trail & Colour Blending
+    const idx = headY * GRID_SIZE + headX;
+    const existing = gridCells[idx];
+    const now = performance.now();
+
+    if (existing && existing.alpha > 0.05) {
+      // Color Overlap Blending: Subtractive/Additive mix + refresh life
+      const blendedR = Math.round((existing.r * 0.4) + (currentRGB[0] * 0.6));
+      const blendedG = Math.round((existing.g * 0.4) + (currentRGB[1] * 0.6));
+      const blendedB = Math.round((existing.b * 0.4) + (currentRGB[2] * 0.6));
+
+      gridCells[idx] = {
+        r: blendedR,
+        g: blendedG,
+        b: blendedB,
+        alpha: 1.0,
+        time: now
+      };
+      // Adopt the blended color forward
+      currentRGB = [blendedR, blendedG, blendedB];
+    } else {
+      // Normal trail deposit
+      gridCells[idx] = {
+        r: currentRGB[0],
+        g: currentRGB[1],
+        b: currentRGB[2],
+        alpha: 1.0,
+        time: now
+      };
+    }
+  }
+
+  function render(now) {
+    // 1. Clear background to white
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, GRID_SIZE, GRID_SIZE);
+
+    // 2. Draw Color Station Blocks (No borders)
+    for (let b of BLOCKS) {
+      ctx.fillStyle = `rgb(${b.rgb[0]}, ${b.rgb[1]}, ${b.rgb[2]})`;
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+    }
+
+    // 3. Render Fading Tiles
+    for (let i = 0; i < gridCells.length; i++) {
+      const cell = gridCells[i];
+      if (!cell) continue;
+
+      const elapsed = now - cell.time;
+      if (elapsed >= FADE_TIME_MS) {
+        gridCells[i] = null;
+        continue;
+      }
+
+      // Linear fade from 1.0 down to 0.0
+      const currentAlpha = 1.0 - (elapsed / FADE_TIME_MS);
+      cell.alpha = currentAlpha;
+
+      const x = i % GRID_SIZE;
+      const y = Math.floor(i / GRID_SIZE);
+
+      ctx.fillStyle = `rgba(${cell.r}, ${cell.g}, ${cell.b}, ${currentAlpha.toFixed(3)})`;
+      ctx.fillRect(x, y, 1, 1);
+    }
+
+    // 4. Render Head Cursor
+    ctx.fillStyle = `rgb(${currentRGB[0]}, ${currentRGB[1]}, ${currentRGB[2]})`;
+    ctx.fillRect(headX, headY, 1, 1);
+  }
+
+  function loop(now) {
+    if (!lastTime) lastTime = now;
+    const delta = (now - lastTime) / 1000;
+    lastTime = now;
+
+    accumulator += delta;
+    const stepInterval = 1 / speed;
+
+    while (accumulator >= stepInterval) {
+      stepSimulation();
+      accumulator -= stepInterval;
+    }
+
+    render(now);
+    requestAnimationFrame(loop);
+  }
+
+  function clearCanvas() {
+    gridCells.fill(null);
+  }
+
+  function resetGame() {
+    clearCanvas();
+    headX = 50;
+    headY = 50;
+    vx = 1;
+    vy = 0;
+    currentRGB = startColorSelect.value.split(",").map(Number);
+  }
+
+  // Start Animation
+  requestAnimationFrame(loop);
+</script>
+
+</body>
+</html>
