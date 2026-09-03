@@ -3,292 +3,493 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Letter Recognition Word Finder</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Shadow Cast - 3D Ambigram Puzzle</title>
   <style>
-    :root {
-      --bg: #0f172a;
-      --card-bg: #1e293b;
-      --text: #f8fafc;
-      --accent: #38bdf8;
-      --success: #4ade80;
-      --muted: #94a3b8;
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
     body {
-      margin: 0;
-      padding: 0;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      background-color: var(--bg);
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      color: var(--text);
-    }
-
-    .game-card {
-      background: var(--card-bg);
-      padding: 2.5rem;
-      border-radius: 16px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
-      width: min(90vw, 420px);
-      text-align: center;
+      background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+      color: #f8fafc;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
       display: flex;
       flex-direction: column;
-      gap: 1.25rem;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
     }
 
-    #word-counter {
-      font-size: 1.25rem;
+    .header-bar {
+      position: absolute;
+      top: 20px;
+      width: 90%;
+      max-width: 800px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+    }
+
+    .back-link {
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+    .back-link:hover { color: #38bdf8; }
+
+    .score-badge {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid #334155;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.9rem;
       font-weight: 700;
-      color: var(--accent);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+      color: #38bdf8;
     }
 
-    .slots-container {
+    #canvas-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      cursor: grab;
+    }
+    #canvas-container:active {
+      cursor: grabbing;
+    }
+
+    .dashboard {
+      position: absolute;
+      bottom: 24px;
+      z-index: 10;
       display: flex;
-      justify-content: center;
-      gap: 0.5rem;
-      margin: 0.5rem 0;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      width: 90%;
+      max-width: 600px;
     }
 
-    .slot {
-      width: 55px;
-      height: 65px;
-      border: 2px dashed #475569;
+    .found-words-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .word-pill {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid #334155;
+      color: #64748b;
+      padding: 6px 16px;
       border-radius: 8px;
+      font-family: monospace;
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      transition: all 0.2s;
+    }
+    .word-pill.discovered {
+      border-color: #10b981;
+      color: #10b981;
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    .action-panel {
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(12px);
+      border: 1px solid #334155;
+      padding: 1rem 1.5rem;
+      border-radius: 16px;
       display: flex;
+      gap: 12px;
       align-items: center;
       justify-content: center;
-      font-size: 2rem;
-      font-weight: bold;
-      color: #fff;
-      background: rgba(255, 255, 255, 0.03);
+      width: 100%;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
     }
 
-    .slot.active {
-      border-color: var(--accent);
-      background: rgba(56, 189, 248, 0.1);
+    .reading-preview {
+      font-family: monospace;
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: 0.25em;
+      color: #38bdf8;
+      min-width: 130px;
+      text-align: center;
     }
 
-    #game-status {
-      min-height: 1.5em;
+    button {
+      background: #38bdf8;
+      color: #0f172a;
+      border: none;
+      padding: 10px 20px;
       font-size: 0.95rem;
-      color: var(--muted);
-      transition: color 0.2s ease;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
     }
+    button:hover { background: #0ea5e9; }
+    button:active { transform: scale(0.97); }
 
-    .word-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      justify-content: center;
-      min-height: 38px;
-    }
-
-    .tag {
+    .secondary-btn {
       background: #334155;
-      padding: 0.35rem 0.75rem;
-      border-radius: 999px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      letter-spacing: 0.05em;
-      color: var(--success);
-      animation: popIn 0.25s ease-out;
+      color: #f8fafc;
+      border: 1px solid #475569;
     }
+    .secondary-btn:hover { background: #475569; }
 
-    @keyframes popIn {
-      0% { transform: scale(0.8); opacity: 0; }
-      100% { transform: scale(1); opacity: 1; }
+    .status-msg {
+      font-size: 0.9rem;
+      font-weight: 700;
+      min-height: 1.2rem;
+      text-align: center;
     }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-  <div class="game-card">
-    <div id="word-counter">0 of 6 words found</div>
-
-    <!-- 4-Letter Slot Preview -->
-    <div class="slots-container">
-      <div class="slot" id="slot-0"></div>
-      <div class="slot" id="slot-1"></div>
-      <div class="slot" id="slot-2"></div>
-      <div class="slot" id="slot-3"></div>
-    </div>
-
-    <div id="game-status">Initializing dictionary...</div>
-    <div class="word-list" id="found-list"></div>
+  <div class="header-bar">
+    <a href="../" class="back-link">← Back to Arcade</a>
+    <div class="score-badge">Words: <span id="progress-val">0 / 3</span></div>
   </div>
 
-  <script>
-    // ==========================================
-    // 1. CONFIGURATION & TOLERANCES ("GRACE")
-    // ==========================================
-    const DICTIONARY_PATH = '../shared/dictionary.js';
-    const TARGET_GOAL = 6;
-    const WORD_LENGTH = 4;
-    const GRACE_WINDOW_MS = 600;
-    const MIN_CONFIDENCE = 0.55;
+  <div id="canvas-container"></div>
 
-    // Visual lookalikes / OCR confusion aliases
-    const CHAR_ALIASES = {
-      '0': 'O',
-      '1': 'I',
-      '|': 'I',
-      'l': 'I',
-      '5': 'S',
-      '8': 'B',
-      '2': 'Z',
-      'V': 'U'
-    };
+  <div class="dashboard">
+    <div class="status-msg" id="status-text">Click to cycle faces, or drag each block to rotate!</div>
 
-    // ==========================================
-    // 2. STATE MANAGEMENT
-    // ==========================================
-    let validDictionary = new Set();
-    const foundWords = new Set();
-    let currentBuffer = [];
-    let recognitionTimer = null;
-    let isDictionaryLoaded = false;
+    <div class="found-words-row">
+      <div class="word-pill" id="slot-0">????</div>
+      <div class="word-pill" id="slot-1">????</div>
+      <div class="word-pill" id="slot-2">????</div>
+    </div>
 
-    // ==========================================
-    // 3. DICTIONARY LOADER
-    // ==========================================
-    async function loadSharedDictionary(path = DICTIONARY_PATH) {
-      try {
-        updateStatus('Loading dictionary...');
-        const response = await fetch(path);
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: Failed to load ${path}`);
+    <div class="action-panel">
+      <div class="reading-preview" id="current-reading">....</div>
+      <button onclick="submitGuess()">Submit Word</button>
+      <button class="secondary-btn" onclick="scrambleBlocks()">Scramble</button>
+    </div>
+  </div>
+
+<script>
+  const TARGET_WORDS = ["POST", "LAMP", "BEAR"];
+  const BLOCKS_CONFIG = [
+    { front: "P", side: "L", top: "B" },
+    { front: "O", side: "A", top: "E" },
+    { front: "S", side: "M", top: "A" },
+    { front: "T", side: "P", top: "R" }
+  ];
+
+  const ORIENTATIONS = [
+    { name: "front", rx: 0,           ry: 0 },
+    { name: "side",  rx: 0,           ry: Math.PI / 2 },
+    { name: "top",   rx: Math.PI / 2, ry: 0 }
+  ];
+
+  const N = 20;
+  const SPACING = 14;
+
+  const container = document.getElementById("canvas-container");
+  const statusText = document.getElementById("status-text");
+  const progressVal = document.getElementById("progress-val");
+  const currentReadingEl = document.getElementById("current-reading");
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.set(0, 0, 56);
+  camera.lookAt(0, 0, 0);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  container.appendChild(renderer.domElement);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+  const dirLight = new THREE.DirectionalLight(0x38bdf8, 0.85);
+  dirLight.position.set(20, 40, 50);
+  scene.add(dirLight);
+
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+
+  const blocks = [];
+  let selectedBlock = null;
+  let isDragging = false;
+  let hasMovedFar = false;
+  let dragStartPos = { x: 0, y: 0 };
+  let prevPointer = { x: 0, y: 0 };
+  let foundWords = new Set();
+
+  function getLetterMask(char) {
+    const c = document.createElement("canvas");
+    c.width = N;
+    c.height = N;
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, N, N);
+    ctx.fillStyle = "#fff";
+    ctx.font = `900 ${Math.floor(N * 0.85)}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(char.toUpperCase(), N / 2, N / 2 + 1);
+
+    const data = ctx.getImageData(0, 0, N, N).data;
+    const mask = [];
+    for (let y = 0; y < N; y++) {
+      mask[y] = [];
+      for (let x = 0; x < N; x++) {
+        mask[y][x] = data[(y * N + x) * 4] > 90;
+      }
+    }
+    return mask;
+  }
+
+  function createAmbigramBlock(config, index) {
+    const group = new THREE.Group();
+    const maskFront = getLetterMask(config.front);
+    const maskSide  = getLetterMask(config.side);
+    const maskTop   = getLetterMask(config.top);
+
+    const validPositions = [];
+    const offset = (N - 1) / 2;
+
+    for (let x = 0; x < N; x++) {
+      for (let y = 0; y < N; y++) {
+        for (let z = 0; z < N; z++) {
+          if (maskFront[y][x] && maskSide[y][z] && maskTop[z][x]) {
+            validPositions.push(new THREE.Vector3(
+              (x - offset) * 0.45,
+              -(y - offset) * 0.45,
+              (z - offset) * 0.45
+            ));
+          }
         }
-
-        const contentType = response.headers.get('content-type') || '';
-        let rawWords = [];
-
-        if (contentType.includes('application/json') || path.endsWith('.json')) {
-          rawWords = await response.json();
-        } else {
-          const text = await response.text();
-          rawWords = text.split(/\r?\n/);
-        }
-
-        validDictionary = new Set(
-          rawWords
-            .map(w => w.trim().toUpperCase())
-            .filter(w => w.length === WORD_LENGTH && /^[A-Z]+$/.test(w))
-        );
-
-        isDictionaryLoaded = true;
-        updateStatus('Ready! Start spelling words.');
-        renderProgress();
-      } catch (error) {
-        console.error('Error loading shared dictionary:', error);
-        updateStatus('Could not load dictionary. Check path in /shared.');
       }
     }
 
-    // ==========================================
-    // 4. INPUT PROCESSING (ENGINE HOOK)
-    // ==========================================
-    function normalizeChar(rawChar) {
-      if (!rawChar) return '';
-      const upper = rawChar.toUpperCase();
-      return CHAR_ALIASES[upper] || upper;
-    }
+    const dotGeo = new THREE.SphereGeometry(0.18, 8, 8);
+    const dotMat = new THREE.MeshStandardMaterial({
+      color: 0x38bdf8,
+      roughness: 0.3,
+      metalness: 0.2
+    });
 
-    // Call this function from your letter recognition or OCR engine:
-    // window.handleIncomingChar('A', 0.92);
-    window.handleIncomingChar = function(char, confidence = 1.0) {
-      if (!isDictionaryLoaded) return;
-      if (confidence < MIN_CONFIDENCE) return;
+    const mesh = new THREE.InstancedMesh(dotGeo, dotMat, validPositions.length);
+    const dummy = new THREE.Object3D();
 
-      const normalized = normalizeChar(char);
-      if (!/^[A-Z]$/.test(normalized)) return;
+    validPositions.forEach((pos, i) => {
+      dummy.position.copy(pos);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    group.add(mesh);
 
-      currentBuffer.push(normalized);
-      renderSlots();
+    const hitGeo = new THREE.SphereGeometry(6, 8, 8);
+    const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+    const hitMesh = new THREE.Mesh(hitGeo, hitMat);
+    hitMesh.userData = { blockIndex: index };
+    group.add(hitMesh);
 
-      clearTimeout(recognitionTimer);
-      recognitionTimer = setTimeout(processBuffer, GRACE_WINDOW_MS);
+    const startX = -((BLOCKS_CONFIG.length - 1) * SPACING) / 2;
+    group.position.x = startX + index * SPACING;
+    scene.add(group);
+
+    return {
+      group,
+      config,
+      targetRotX: 0,
+      targetRotY: 0,
+      faceIdx: 0,
+      hitMesh
     };
+  }
 
-    // Keyboard fallback for testing directly in your browser:
-    window.addEventListener('keydown', (e) => {
-      if (/^[a-zA-Z0-9]$/.test(e.key)) {
-        handleIncomingChar(e.key, 1.0);
+  BLOCKS_CONFIG.forEach((cfg, idx) => {
+    blocks.push(createAmbigramBlock(cfg, idx));
+  });
+
+  function getFacingLetter(block) {
+    const q = block.group.quaternion;
+    
+    const vFront = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
+    const vSide  = new THREE.Vector3(1, 0, 0).applyQuaternion(q);
+    const vTop   = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
+
+    if (vFront.z > 0.55) return block.config.front;
+    if (vSide.z > 0.55)  return block.config.side;
+    if (vTop.z > 0.55)   return block.config.top;
+
+    return "?";
+  }
+
+  function updateReading() {
+    const word = blocks.map(b => getFacingLetter(b)).join("");
+    currentReadingEl.innerText = word;
+  }
+
+  function snapToClosestFace(block) {
+    let bestDist = Infinity;
+    let bestFace = ORIENTATIONS[0];
+
+    const qCurrent = block.group.quaternion.clone();
+
+    ORIENTATIONS.forEach(orient => {
+      const qTarget = new THREE.Quaternion().setFromEuler(new THREE.Euler(orient.rx, orient.ry, 0, 'YXZ'));
+      const angleDist = qCurrent.angleTo(qTarget);
+      if (angleDist < bestDist) {
+        bestDist = angleDist;
+        bestFace = orient;
       }
     });
 
-    // ==========================================
-    // 5. WORD VALIDATION
-    // ==========================================
-    function processBuffer() {
-      const candidate = currentBuffer.slice(-WORD_LENGTH).join('');
+    block.targetRotX = bestFace.rx;
+    block.targetRotY = bestFace.ry;
+  }
 
-      if (candidate.length === WORD_LENGTH) {
-        validateCandidate(candidate);
-      }
+  function cycleBlockFace(block) {
+    block.faceIdx = (block.faceIdx + 1) % ORIENTATIONS.length;
+    block.targetRotX = ORIENTATIONS[block.faceIdx].rx;
+    block.targetRotY = ORIENTATIONS[block.faceIdx].ry;
+  }
+
+  function scrambleBlocks() {
+    blocks.forEach(b => {
+      b.faceIdx = Math.floor(Math.random() * ORIENTATIONS.length);
+      b.targetRotX = ORIENTATIONS[b.faceIdx].rx;
+      b.targetRotY = ORIENTATIONS[b.faceIdx].ry;
+    });
+    setStatus("Blocks scrambled! Click or drag them to form words.", "#94a3b8");
+  }
+
+  function setStatus(msg, color) {
+    statusText.innerText = msg;
+    statusText.style.color = color;
+  }
+
+  function submitGuess() {
+    const word = blocks.map(b => getFacingLetter(b)).join("");
+
+    if (word.includes("?")) {
+      setStatus("One or more blocks aren't fully aligned. Tap or snap them!", "#f59e0b");
+      return;
     }
 
-    function validateCandidate(word) {
-      if (validDictionary.has(word)) {
-        if (!foundWords.has(word)) {
-          foundWords.add(word);
-          appendFoundTag(word);
-          updateStatus(`Nice! "${word}" accepted.`);
-          currentBuffer = [];
-          renderSlots();
-        } else {
-          updateStatus(`"${word}" was already found.`);
-        }
+    if (foundWords.has(word)) {
+      setStatus(`You already discovered "${word}"!`, "#f59e0b");
+      return;
+    }
+
+    if (TARGET_WORDS.includes(word)) {
+      foundWords.add(word);
+      const slotIdx = TARGET_WORDS.indexOf(word);
+      const slotEl = document.getElementById(`slot-${slotIdx}`);
+      slotEl.innerText = word;
+      slotEl.classList.add("discovered");
+
+      progressVal.innerText = `${foundWords.size} / ${TARGET_WORDS.length}`;
+
+      if (foundWords.size === TARGET_WORDS.length) {
+        setStatus("🎉 Fantastic! You found all 3 ambigram words!", "#10b981");
       } else {
-        updateStatus(`"${word}" isn't in the dictionary.`);
+        setStatus(`✓ Correct! Found "${word}". Keep finding the others!`, "#10b981");
       }
+    } else {
+      setStatus(`"${word}" is not one of the target words.`, "#f43f5e");
+    }
+  }
 
-      renderProgress();
+  function onPointerDown(e) {
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const hitMeshes = blocks.map(b => b.hitMesh);
+    const intersects = raycaster.intersectObjects(hitMeshes);
+
+    if (intersects.length > 0) {
+      isDragging = true;
+      hasMovedFar = false;
+      const blockIdx = intersects[0].object.userData.blockIndex;
+      selectedBlock = blocks[blockIdx];
+      dragStartPos = { x: e.clientX, y: e.clientY };
+      prevPointer = { x: e.clientX, y: e.clientY };
+    }
+  }
+
+  function onPointerMove(e) {
+    if (!isDragging || !selectedBlock) return;
+
+    const totalDx = Math.abs(e.clientX - dragStartPos.x);
+    const totalDy = Math.abs(e.clientY - dragStartPos.y);
+
+    if (totalDx > 6 || totalDy > 6) {
+      hasMovedFar = true;
     }
 
-    // ==========================================
-    // 6. UI UPDATES
-    // ==========================================
-    function renderProgress() {
-      const counterElement = document.getElementById('word-counter');
-      if (counterElement) {
-        counterElement.textContent = `${foundWords.size} of ${TARGET_GOAL} words found`;
+    const dx = e.clientX - prevPointer.x;
+    const dy = e.clientY - prevPointer.y;
+
+    if (totalDx > totalDy) {
+      selectedBlock.targetRotY += dx * 0.015;
+    } else {
+      selectedBlock.targetRotX += dy * 0.015;
+    }
+
+    prevPointer = { x: e.clientX, y: e.clientY };
+  }
+
+  function onPointerUp() {
+    if (selectedBlock) {
+      if (!hasMovedFar) {
+        cycleBlockFace(selectedBlock);
+      } else {
+        snapToClosestFace(selectedBlock);
       }
-
-      if (foundWords.size >= TARGET_GOAL) {
-        updateStatus(`Goal reached! All ${TARGET_GOAL} words found!`);
-      }
     }
+    isDragging = false;
+    selectedBlock = null;
+  }
 
-    function renderSlots() {
-      const lastFour = currentBuffer.slice(-WORD_LENGTH);
-      for (let i = 0; i < WORD_LENGTH; i++) {
-        const slot = document.getElementById(`slot-${i}`);
-        const char = lastFour[i] || '';
-        slot.textContent = char;
-        slot.classList.toggle('active', Boolean(char));
-      }
-    }
+  window.addEventListener("pointerdown", onPointerDown);
+  window.addEventListener("pointermove", onPointerMove);
+  window.addEventListener("pointerup", onPointerUp);
 
-    function appendFoundTag(word) {
-      const list = document.getElementById('found-list');
-      const tag = document.createElement('span');
-      tag.className = 'tag';
-      tag.textContent = word;
-      list.appendChild(tag);
-    }
+  function animate() {
+    requestAnimationFrame(animate);
 
-    function updateStatus(message) {
-      const statusElement = document.getElementById('game-status');
-      if (statusElement) statusElement.textContent = message;
-    }
+    blocks.forEach(b => {
+      b.group.rotation.x += (b.targetRotX - b.group.rotation.x) * 0.2;
+      b.group.rotation.y += (b.targetRotY - b.group.rotation.y) * 0.2;
+    });
 
-    // Run initialization
-    loadSharedDictionary();
-  </script>
+    updateReading();
+    renderer.render(scene, camera);
+  }
+
+  window.addEventListener("resize", () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  scrambleBlocks();
+  animate();
+</script>
+
 </body>
 </html>
