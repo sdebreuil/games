@@ -346,10 +346,10 @@
   let totalScore = 0;
   let isGameOver = false;
 
-  const SCORE_VALUES = { 7: 70, 6: 50, 5: 35, 4: 20, 3: 10 };
+  const SCORE_VALUES = { 6: 60, 5: 40, 4: 20, 3: 10 };
 
   let ANAGRAM_MAP = new Map();
-  let SEVEN_KEYS = [];
+  let SIX_KEYS = [];
   let IS_INDEXED = false;
 
   const guessTrayEl = document.getElementById("guess-tray");
@@ -372,11 +372,11 @@
   function buildAnagramIndex() {
     if (typeof VALID_WORDS === "undefined" || VALID_WORDS.size === 0) return false;
     ANAGRAM_MAP.clear();
-    SEVEN_KEYS = [];
+    SIX_KEYS = [];
 
     for (let w of VALID_WORDS) {
       const len = w.length;
-      if (len >= 3 && len <= 7) {
+      if (len >= 3 && len <= 6) {
         const key = getSortedKey(w);
         const upper = w.toUpperCase();
         if (!ANAGRAM_MAP.has(key)) {
@@ -387,9 +387,13 @@
       }
     }
 
-    for (let key of ANAGRAM_MAP.keys()) {
-      if (key.length === 7) SEVEN_KEYS.push(key);
+    // Filter 6-letter keys that have at least 2 anagrams
+    for (let [key, words] of ANAGRAM_MAP.entries()) {
+      if (key.length === 6 && words.length >= 2) {
+        SIX_KEYS.push(key);
+      }
     }
+
     IS_INDEXED = true;
     return true;
   }
@@ -431,10 +435,10 @@
       if (!success) return null;
     }
 
-    const keysCopy = [...SEVEN_KEYS];
+    const keysCopy = [...SIX_KEYS];
     shuffleArray(keysCopy);
 
-    for (let i = 0; i < Math.min(keysCopy.length, 50); i++) {
+    for (let i = 0; i < Math.min(keysCopy.length, 60); i++) {
       const chain = solveChainFast(keysCopy[i], 3);
       if (chain) return chain;
     }
@@ -481,7 +485,7 @@
     shuffleArray(rackTiles);
     renderAll();
     updateTierCounter();
-    setMsg("Tap letters or type to make 7-letter words! Drop down when ready.", "#38bdf8");
+    setMsg("Find at least two 6-letter words! Drop down whenever you're ready.", "#38bdf8");
   }
 
   function shuffleArray(array) {
