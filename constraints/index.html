@@ -5,7 +5,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Constraints! - With Dictionary Check</title>
+  <title>Constraints! - Daily & Free Play</title>
   <style>
     :root {
       --bg: #0b0f19;
@@ -41,7 +41,6 @@
       gap: 1.25rem;
     }
 
-    /* Back to Arcade Nav Link */
     .top-nav {
       display: flex;
       align-items: center;
@@ -107,6 +106,7 @@
       justify-content: space-between;
       gap: 0.5rem;
       margin-bottom: 1rem;
+      min-height: 52px;
     }
 
     .tile {
@@ -257,12 +257,29 @@
       color: var(--muted);
       margin-top: 0.3rem;
     }
+
+    .delete-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 0.35rem 0.5rem;
+      border-radius: 6px;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .delete-btn:hover {
+      color: var(--error);
+      background: rgba(239, 68, 68, 0.15);
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <!-- Back to Arcade link -->
   <nav class="top-nav">
     <a href="../index.html" class="back-link">
       &larr; Back to Arcade
@@ -279,23 +296,20 @@
     <p class="subtitle" id="rollMetaInfo">Daily Puzzle</p>
   </header>
 
-  <!-- Roll Display -->
   <div class="card">
     <div class="tiles-wrapper" id="tilesContainer"></div>
     <div class="controls">
-      <span style="font-size: 0.85rem; color: var(--muted);" id="modeDesc">Same letters for all players today.</span>
+      <span style="font-size: 0.85rem; color: var(--muted);" id="modeDesc">Same letters for all players today. Progress saved locally.</span>
       <button class="action-btn" id="reRollBtn" style="display: none;">Roll Again</button>
     </div>
   </div>
 
-  <!-- Main Game Input Card -->
   <div class="card" style="display: flex; flex-direction: column; gap: 0.75rem;">
     <textarea id="inputArea" placeholder="Type your sentence or paragraph here..."></textarea>
     
     <div style="font-size: 0.8rem; color: var(--muted); font-weight: 700; letter-spacing: 0.05em;">LETTER TRACKER</div>
     <div class="preview-box" id="previewBox"></div>
 
-    <!-- Dict warning area -->
     <div id="dictionaryFeedback" style="display: none;">
       <span style="font-size: 0.8rem; color: var(--error); font-weight: 600;">Unrecognized words: </span>
       <div id="invalidWordsList" style="margin-top: 0.3rem;"></div>
@@ -313,9 +327,8 @@
     <button class="action-btn" id="submitBtn" disabled style="margin-top: 0.4rem; width: 100%;">+ Save as Valid Entry</button>
   </div>
 
-  <!-- Saved Drafts -->
   <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
       <span style="font-weight: 700; font-size: 0.95rem;">Your Entries for this Roll</span>
       <span style="font-size: 0.8rem; color: var(--muted);">Pick your final answer</span>
     </div>
@@ -324,6 +337,12 @@
       <div style="color: var(--muted); font-size: 0.85rem; padding: 0.75rem 0;" id="emptySubmissionsMsg">
         No entries saved yet. Sequence must be complete and all words in dictionary.
       </div>
+    </div>
+
+    <div id="shareContainer" style="margin-top: 1rem; display: none;">
+      <button class="action-btn" id="shareBtn" style="width: 100%; background: #22c55e; color: #0b0f19;">
+        📋 Share / Copy Result
+      </button>
     </div>
   </div>
 </div>
@@ -390,10 +409,10 @@
       const state = JSON.parse(raw);
       if (!state) return false;
 
-      if (!isDaily && state.target && state.target.length === TILE_COUNT) {
+      if (!isDaily && Array.isArray(state.target) && state.target.length === TILE_COUNT) {
         currentTarget = state.target;
       }
-      submissions = state.submissions || [];
+      submissions = Array.isArray(state.submissions) ? state.submissions : [];
       finalIndex = typeof state.finalIndex === 'number' ? state.finalIndex : 0;
       document.getElementById("inputArea").value = state.draftText || "";
       return true;
@@ -404,41 +423,39 @@
   }
 
   function generateLetters(forceNewRoll = false) {
-    const hasSavedState = !forceNewRoll && loadPersistedState();
+    loadPersistedState();
 
-    if (!hasSavedState) {
-      currentTarget = [];
-      submissions = [];
-      finalIndex = 0;
-      document.getElementById("inputArea").value = "";
-
-      if (isDaily) {
-        const seed = getDateSeed();
-        const rand = seededRandom(seed);
-        for (let i = 0; i < TILE_COUNT; i++) {
-          const idx = Math.floor(rand() * TILE_POOL.length);
-          currentTarget.push(TILE_POOL[idx]);
-        }
-      } else {
-        for (let i = 0; i < TILE_COUNT; i++) {
-          const idx = Math.floor(Math.random() * TILE_POOL.length);
-          currentTarget.push(TILE_POOL[idx]);
-        }
-      }
-      persistState();
-    }
-
+    // Deterministic generation for daily mode
     if (isDaily) {
+      currentTarget = [];
+      const seed = getDateSeed();
+      const rand = seededRandom(seed);
+      for (let i = 0; i < TILE_COUNT; i++) {
+        const idx = Math.floor(rand() * TILE_POOL.length);
+        currentTarget.push(TILE_POOL[idx]);
+      }
       const todayStr = new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
       document.getElementById("rollMetaInfo").innerText = `Daily Puzzle — ${todayStr}`;
       document.getElementById("modeDesc").innerText = "Same letters for all players today. Progress saved locally.";
       document.getElementById("reRollBtn").style.display = "none";
     } else {
+      // Free play mode
+      if (forceNewRoll || currentTarget.length !== TILE_COUNT) {
+        currentTarget = [];
+        for (let i = 0; i < TILE_COUNT; i++) {
+          const idx = Math.floor(Math.random() * TILE_POOL.length);
+          currentTarget.push(TILE_POOL[idx]);
+        }
+        submissions = [];
+        finalIndex = 0;
+        document.getElementById("inputArea").value = "";
+      }
       document.getElementById("rollMetaInfo").innerText = "Free Play — Unlimited Rolls";
       document.getElementById("modeDesc").innerText = "Practice and test different constraints.";
       document.getElementById("reRollBtn").style.display = "inline-block";
     }
 
+    persistState();
     renderTiles();
     validateText();
     renderSubmissions();
@@ -503,8 +520,9 @@
     document.getElementById("letterCount").innerText = lettersOnly;
     document.getElementById("charCount").innerText = text.length;
 
-    const sequenceSolved = targetIdx === currentTarget.length;
-    const allWordsValid = invalidWords.length === 0 && extractedWords.length > 0;
+    const sequenceSolved = currentTarget.length > 0 && targetIdx === currentTarget.length;
+    const hasText = extractedWords.length > 0;
+    const allWordsValid = invalidWords.length === 0 && hasText;
     const canSubmit = sequenceSolved && allWordsValid;
 
     submitBtn.disabled = !canSubmit;
@@ -512,7 +530,7 @@
     if (canSubmit) {
       statusBadge.className = "status-badge valid";
       statusBadge.innerText = "✓ Sequence Solved & Words Verified!";
-    } else if (sequenceSolved && !allWordsValid) {
+    } else if (invalidWords.length > 0) {
       statusBadge.className = "status-badge invalid";
       statusBadge.innerText = "Invalid English word(s) detected";
     } else {
@@ -536,6 +554,15 @@
 
     document.getElementById("inputArea").value = "";
     validateText();
+    renderSubmissions();
+    persistState();
+  }
+
+  function deleteSubmission(idxToDelete) {
+    submissions.splice(idxToDelete, 1);
+    if (finalIndex >= submissions.length) {
+      finalIndex = Math.max(0, submissions.length - 1);
+    }
     renderSubmissions();
     persistState();
   }
@@ -582,12 +609,18 @@
             ${item.words} words &bull; ${item.letters} letters &bull; ${item.chars} total characters
           </div>
         </div>
+        <button class="delete-btn" title="Delete entry">&times;</button>
       `;
 
       row.querySelector('input').addEventListener('change', () => {
         finalIndex = idx;
         renderSubmissions();
         persistState();
+      });
+
+      row.querySelector('.delete-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteSubmission(idx);
       });
 
       list.appendChild(row);
@@ -626,7 +659,6 @@
   document.getElementById("inputArea").addEventListener("input", validateText);
   document.getElementById("submitBtn").addEventListener("click", addSubmission);
   
-  // Create share button event listener if present
   const shareBtnElem = document.getElementById("shareBtn");
   if (shareBtnElem) {
     shareBtnElem.addEventListener("click", shareResult);
@@ -654,3 +686,5 @@
 
   generateLetters();
 </script>
+</body>
+</html>
