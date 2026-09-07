@@ -136,6 +136,8 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
     }
 
     button.action-btn {
@@ -300,7 +302,10 @@
     <div class="tiles-wrapper" id="tilesContainer"></div>
     <div class="controls">
       <span style="font-size: 0.85rem; color: var(--muted);" id="modeDesc">Same letters for all players today. Progress saved locally.</span>
-      <button class="action-btn" id="reRollBtn" style="display: none;">Roll Again</button>
+      <div style="display: flex; gap: 0.5rem;">
+        <button class="action-btn" id="shareRackBtn" style="display: none; background: #334155; color: #f8fafc;">🔗 Invite / Share Rack</button>
+        <button class="action-btn" id="reRollBtn" style="display: none;">Roll Again</button>
+      </div>
     </div>
   </div>
 
@@ -385,10 +390,15 @@
   }
 
   function getStorageKey() {
-    return isDaily ? `constraints_daily_${getDateSeed()}` : 'constraints_freeplay';
+    if (isDaily) {
+      return `constraints_daily_${getDateSeed()}`;
+    }
+    const rackKey = currentTarget.length === TILE_COUNT ? currentTarget.join("") : "default";
+    return `constraints_freeplay_${rackKey}`;
   }
 
   function persistState() {
+    if (currentTarget.length !== TILE_COUNT) return;
     const state = {
       target: currentTarget,
       submissions: submissions,
@@ -422,10 +432,30 @@
     }
   }
 
+  function checkUrlForSharedRack() {
+    const params = new URLSearchParams(window.location.search);
+    const rackParam = params.get("letters") || params.get("rack");
+    if (rackParam) {
+      const cleaned = rackParam.toUpperCase().replace(/[^A-Z]/g, "");
+      if (cleaned.length === TILE_COUNT) {
+        return cleaned.split("");
+      }
+    }
+    return null;
+  }
+
   function generateLetters(forceNewRoll = false) {
+    const sharedRack = checkUrlForSharedRack();
+
+    if (sharedRack && !forceNewRoll) {
+      isDaily = false;
+      currentTarget = sharedRack;
+      document.getElementById("dailyModeBtn").classList.remove("active");
+      document.getElementById("freeModeBtn").classList.add("active");
+    }
+
     loadPersistedState();
 
-    // Deterministic generation for daily mode
     if (isDaily) {
       currentTarget = [];
       const seed = getDateSeed();
@@ -438,9 +468,12 @@
       document.getElementById("rollMetaInfo").innerText = `Daily Puzzle — ${todayStr}`;
       document.getElementById("modeDesc").innerText = "Same letters for all players today. Progress saved locally.";
       document.getElementById("reRollBtn").style.display = "none";
+      document.getElementById("shareRackBtn").style.display = "none";
     } else {
-      // Free play mode
       if (forceNewRoll || currentTarget.length !== TILE_COUNT) {
+        if (window.location.search) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
         currentTarget = [];
         for (let i = 0; i < TILE_COUNT; i++) {
           const idx = Math.floor(Math.random() * TILE_POOL.length);
@@ -451,8 +484,9 @@
         document.getElementById("inputArea").value = "";
       }
       document.getElementById("rollMetaInfo").innerText = "Free Play — Unlimited Rolls";
-      document.getElementById("modeDesc").innerText = "Practice and test different constraints.";
+      document.getElementById("modeDesc").innerText = "Practice, create custom rolls, or challenge friends.";
       document.getElementById("reRollBtn").style.display = "inline-block";
+      document.getElementById("shareRackBtn").style.display = "inline-block";
     }
 
     persistState();
@@ -627,17 +661,40 @@
     });
   }
 
+  function shareRackLink() {
+    if (currentTarget.length !== TILE_COUNT) return;
+    const rackStr = currentTarget.join("");
+    const url = new URL(window.location.href);
+    url.searchParams.set("letters", rackStr);
+
+    navigator.clipboard.writeText(url.toString()).then(() => {
+      const btn = document.getElementById("shareRackBtn");
+      const originalText = btn.innerText;
+      btn.innerText = "✓ Challenge Link Copied!";
+      btn.style.background = "var(--accent)";
+      btn.style.color = "#0b0f19";
+      setTimeout(() => {
+        btn.innerText = originalText;
+        btn.style.background = "#334155";
+        btn.style.color = "#f8fafc";
+      }, 2000);
+    }).catch(err => {
+      console.error("Failed to copy link", err);
+      prompt("Copy this challenge link:", url.toString());
+    });
+  }
+
   function shareResult() {
     if (submissions.length === 0) return;
     const finalSub = submissions[finalIndex] || submissions[0];
-    const dateStr = new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    const modeLabel = isDaily ? `Daily (${new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})` : 'Free Play Challenge';
     const tilesEmoji = currentTarget.map(() => "🟩").join(" ");
 
-    const shareText = `Constraints! (${dateStr})\n` +
+    const shareText = `Constraints! — ${modeLabel}\n` +
                       `Letters: ${currentTarget.join(" - ")}\n` +
                       `${tilesEmoji}\n\n` +
                       `"${finalSub.text}"\n` +
-                      `(${finalSub.words} words)`;
+                      `(${finalSub.words} words, ${finalSub.letters} letters)`;
 
     navigator.clipboard.writeText(shareText).then(() => {
       const shareBtn = document.getElementById("shareBtn");
@@ -658,7 +715,8 @@
 
   document.getElementById("inputArea").addEventListener("input", validateText);
   document.getElementById("submitBtn").addEventListener("click", addSubmission);
-  
+  document.getElementById("shareRackBtn").addEventListener("click", shareRackLink);
+
   const shareBtnElem = document.getElementById("shareBtn");
   if (shareBtnElem) {
     shareBtnElem.addEventListener("click", shareResult);
@@ -667,6 +725,9 @@
   document.getElementById("dailyModeBtn").addEventListener("click", () => {
     if (isDaily) return;
     isDaily = true;
+    if (window.location.search) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
     document.getElementById("dailyModeBtn").classList.add("active");
     document.getElementById("freeModeBtn").classList.remove("active");
     generateLetters();
