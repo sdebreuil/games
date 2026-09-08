@@ -275,6 +275,61 @@
     .delete-btn:hover { color: var(--error); background: rgba(239, 68, 68, 0.15); }
     .vote-btn:hover { color: #f43f5e; background: rgba(244, 63, 94, 0.15); }
     .vote-btn.voted { color: #f43f5e; font-weight: 800; }
+
+    /* Calendar Archive Heatmap Styles */
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0.5rem;
+      margin-top: 0.85rem;
+    }
+
+    .calendar-day-btn {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+      padding: 0.25rem;
+      color: var(--text);
+      position: relative;
+      background: #111827;
+    }
+
+    .calendar-day-btn:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+    }
+
+    .calendar-day-btn.is-active {
+      border: 2px solid var(--accent);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+    }
+
+    .cal-date-num {
+      font-weight: 800;
+      font-size: 1.05rem;
+      line-height: 1;
+    }
+
+    .cal-date-label {
+      font-size: 0.65rem;
+      color: var(--muted);
+      margin-top: 2px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .cal-count-pill {
+      font-size: 0.65rem;
+      font-weight: 700;
+      margin-top: 4px;
+      color: #fff;
+    }
   </style>
 </head>
 <body>
@@ -350,7 +405,7 @@
     </div>
   </div>
 
-  <!-- Community Leaderboard & Polling Showcase -->
+  <!-- Community Showcase -->
   <div class="card" id="communityCard" style="display: none;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
       <div>
@@ -369,6 +424,17 @@
         📋 Share / Copy Result
       </button>
     </div>
+  </div>
+
+  <!-- 14-Day Calendar Archive Strip with Activity Heatmap -->
+  <div class="card" id="calendarCard">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <span style="font-weight: 700; font-size: 0.95rem;">Daily Archive (Past 2 Weeks)</span>
+        <p style="margin: 0.2rem 0 0; font-size: 0.8rem; color: var(--muted);">Click any date to play that day's rack. Brighter glow = more responses.</p>
+      </div>
+    </div>
+    <div class="calendar-grid" id="calendarGrid"></div>
   </div>
 </div>
 
@@ -394,14 +460,14 @@
   const TILE_COUNT = 7;
 
   let isDaily = true;
+  let activeDate = new Date(); // Tracks the currently active puzzle date
   let currentTarget = [];
   let submissions = [];
   let finalIndex = 0;
   let hasPublished = false;
 
-  function getDateSeed() {
-    const now = new Date();
-    return now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
+  function getDateSeed(dateObj = activeDate) {
+    return dateObj.getFullYear() * 10000 + (dateObj.getMonth() + 1) * 100 + dateObj.getDate();
   }
 
   function seededRandom(seed) {
@@ -411,6 +477,18 @@
       s = (s * 16807) % 2147483647;
       return (s - 1) / 2147483646;
     };
+  }
+
+  // Generate the deterministic 7-letter rack for any given date
+  function getRackForDate(dateObj) {
+    const seed = getDateSeed(dateObj);
+    const rand = seededRandom(seed);
+    const rack = [];
+    for (let i = 0; i < TILE_COUNT; i++) {
+      const idx = Math.floor(rand() * TILE_POOL.length);
+      rack.push(TILE_POOL[idx]);
+    }
+    return rack;
   }
 
   function getStorageKey() {
@@ -479,16 +557,12 @@
     loadPersistedState();
 
     if (isDaily) {
-      currentTarget = [];
-      const seed = getDateSeed();
-      const rand = seededRandom(seed);
-      for (let i = 0; i < TILE_COUNT; i++) {
-        const idx = Math.floor(rand() * TILE_POOL.length);
-        currentTarget.push(TILE_POOL[idx]);
-      }
-      const todayStr = new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-      document.getElementById("rollMetaInfo").innerText = `Daily Puzzle — ${todayStr}`;
-      document.getElementById("modeDesc").innerText = "Same letters for all players today. Progress saved locally.";
+      currentTarget = getRackForDate(activeDate);
+
+      const isToday = activeDate.toDateString() === new Date().toDateString();
+      const dateStr = activeDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      document.getElementById("rollMetaInfo").innerText = `${isToday ? "Daily Puzzle" : "Archived Puzzle"} — ${dateStr}`;
+      document.getElementById("modeDesc").innerText = `Letters locked to ${dateStr}. Progress saved locally.`;
       document.getElementById("reRollBtn").style.display = "none";
       document.getElementById("shareRackBtn").style.display = "none";
     } else {
@@ -522,6 +596,8 @@
     } else {
       document.getElementById("communityCard").style.display = "none";
     }
+
+    renderCalendar();
   }
 
   function renderTiles(matchedCount = 0) {
@@ -688,9 +764,6 @@
     });
   }
 
-  // ==========================================
-  // 2. SUPABASE SOCIAL LEADERBOARD & VOTING
-  // ==========================================
   async function publishToBoard() {
     if (submissions.length === 0 || !supabase) return;
     const finalSub = submissions[finalIndex] || submissions[0];
@@ -717,9 +790,10 @@
       hasPublished = true;
       persistState();
       loadCommunityBoard();
+      renderCalendar(); // Refresh counts on the archive grid
     } catch (err) {
       console.error("Submission failed:", err);
-      alert("Error saving your entry to the group board: " + (err.message || "Please ensure the table exists in Supabase."));
+      alert("Error saving your entry to the group board: " + (err.message || "Please check Supabase settings."));
     } finally {
       publishBtn.disabled = false;
       publishBtn.innerText = "🚀 Submit to Group Board";
@@ -808,6 +882,96 @@
     }
   }
 
+  // ==========================================
+  // 3. 14-DAY CALENDAR ARCHIVE WITH HEATMAP
+  // ==========================================
+  async function renderCalendar() {
+    const grid = document.getElementById("calendarGrid");
+    grid.innerHTML = "";
+
+    // Build the list of the past 14 days (today down to 13 days ago)
+    const days = [];
+    const racks = [];
+    const today = new Date();
+
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(today.getDate() - i);
+      const rackStr = getRackForDate(d).join("");
+      days.push({ date: d, rack: rackStr });
+      racks.push(rackStr);
+    }
+
+    // Query Supabase to tally submission counts for each of those 14 racks
+    const countsMap = {};
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('submissions')
+          .select('rack')
+          .in('rack', racks);
+
+        if (!error && data) {
+          data.forEach(row => {
+            countsMap[row.rack] = (countsMap[row.rack] || 0) + 1;
+          });
+        }
+      } catch (err) {
+        console.warn("Could not fetch calendar heatmap counts:", err);
+      }
+    }
+
+    // Determine max responses across the 14 days for relative color scaling
+    const maxCount = Math.max(1, ...Object.values(countsMap));
+
+    days.forEach(({ date, rack }) => {
+      const count = countsMap[rack] || 0;
+      const isSelected = isDaily && date.toDateString() === activeDate.toDateString();
+
+      // Color calculation: scaling opacity of a bright cyan/sky blue gradient
+      // Higher responses -> brighter, punchier background
+      const ratio = count === 0 ? 0 : Math.min(1, count / maxCount);
+      const alpha = count === 0 ? 0.05 : 0.15 + (ratio * 0.7);
+
+      const btn = document.createElement("button");
+      btn.className = `calendar-day-btn ${isSelected ? 'is-active' : ''}`;
+      
+      // Dynamic gradient background
+      if (count === 0) {
+        btn.style.background = "#131c2e";
+      } else {
+        btn.style.background = `linear-gradient(135deg, rgba(56, 189, 248, ${alpha}) 0%, rgba(2, 132, 199, ${alpha * 0.7}) 100%)`;
+      }
+
+      const dayName = date.toLocaleDateString(undefined, { weekday: 'short' });
+      const dayNum = date.getDate();
+
+      btn.innerHTML = `
+        <span class="cal-date-label">${dayName}</span>
+        <span class="cal-date-num">${dayNum}</span>
+        <span class="cal-count-pill" style="opacity: ${count === 0 ? 0.35 : 1};">${count}</span>
+      `;
+
+      btn.title = `${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}: ${count} responses`;
+
+      btn.addEventListener("click", () => {
+        isDaily = true;
+        activeDate = new Date(date);
+        document.getElementById("dailyModeBtn").classList.add("active");
+        document.getElementById("freeModeBtn").classList.remove("active");
+        
+        // Remove any custom challenge URL query
+        if (window.location.search) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        
+        generateLetters();
+      });
+
+      grid.appendChild(btn);
+    });
+  }
+
   function escapeHtml(str) {
     return (str || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
   }
@@ -838,7 +1002,9 @@
   function shareResult() {
     if (submissions.length === 0) return;
     const finalSub = submissions[finalIndex] || submissions[0];
-    const modeLabel = isDaily ? `Daily (${new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})` : 'Free Play Challenge';
+    const modeLabel = isDaily 
+      ? `Daily (${activeDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})` 
+      : 'Free Play Challenge';
     const tilesEmoji = currentTarget.map(() => "🟩").join(" ");
 
     const shareText = `Constraints! — ${modeLabel}\n` +
@@ -864,7 +1030,7 @@
     });
   }
 
-  // Event Handlers
+  // Event Listeners
   document.getElementById("inputArea").addEventListener("input", validateText);
   document.getElementById("submitBtn").addEventListener("click", addSubmission);
   document.getElementById("shareRackBtn").addEventListener("click", shareRackLink);
@@ -873,8 +1039,9 @@
   document.getElementById("shareBtn").addEventListener("click", shareResult);
 
   document.getElementById("dailyModeBtn").addEventListener("click", () => {
-    if (isDaily) return;
+    if (isDaily && activeDate.toDateString() === new Date().toDateString()) return;
     isDaily = true;
+    activeDate = new Date(); // Reset to today when clicking the mode toggle
     if (window.location.search) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
